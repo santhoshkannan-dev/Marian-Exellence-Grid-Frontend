@@ -1,7 +1,0 @@
-django
-djangorestframework
-djangorestframework-simplejwt
-django-cors-headers
-google-auth
-requests
-psycopg2-binary
