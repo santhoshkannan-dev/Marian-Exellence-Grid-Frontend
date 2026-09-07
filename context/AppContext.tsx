@@ -159,8 +159,6 @@ export interface ClassIndexEntry {
 }
 
 
-const LOCAL_STORAGE_KEY = 'bc_persistent_state_v2';
-
 // Role helper to map Django backend roles to frontend route slugs
 const mapBackendRoleToFrontend = (backendRole: string): string => {
   const role = backendRole.toLowerCase();
@@ -370,55 +368,56 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setCurrentUserInfo(info);
   };
 
-  // Load from localStorage on mount
+  // Load session from backend via JWT & fetch backend settings on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (saved && saved !== 'undefined' && saved !== 'null') {
-          try {
-            const data = JSON.parse(saved);
-            if (data) {
-              if (data.submissionOpen !== undefined) setSubmissionOpen(data.submissionOpen);
-              if (data.evaluationOpen !== undefined) setEvaluationOpen(data.evaluationOpen);
-              if (data.submissionWindowStart !== undefined) setSubmissionWindowStart(data.submissionWindowStart);
-              if (data.submissionWindowEnd !== undefined) setSubmissionWindowEnd(data.submissionWindowEnd);
-              if (data.submissions && Array.isArray(data.submissions)) {
-                // Normalize any cached submissions that still have snake_case fields
-                const normalized = data.submissions.map((raw: any) => ({
-                  ...raw,
-                  studentId: raw.studentId ?? raw.user ?? raw.student_id ?? 0,
-                  criteriaId: raw.criteriaId ?? raw.criteria_id ?? 0,
-                }));
-                setSubmissions(normalized);
-              } else if (data.submissions) {
-                setSubmissions(data.submissions);
-              }
-              if (data.users) setUsers(data.users);
-              // Never restore criteriaCatalog from cache — always fetch fresh from DB
-              // (so admin changes reflect immediately for all roles)
-              if (data.academicYears) setAcademicYears(data.academicYears);
-              if (data.students) setStudents(data.students);
-              // Only restore cached user groups if non-empty
-              if (data.userGroups && Array.isArray(data.userGroups) && data.userGroups.length > 0) {
-                setUserGroups(data.userGroups);
-              } else if (data.userGroups) {
-                setUserGroups(data.userGroups);
-              }
-              if (data.activeAcademicYear) {
-                setActiveAcademicYear(data.activeAcademicYear);
-                setSelectedAcademicYear(data.activeAcademicYear);
-              }
-              if (data.loggedIn !== undefined) setLoggedIn(data.loggedIn);
-              if (data.currentRole) setCurrentRole(data.currentRole);
-              if (data.currentUserId) setCurrentUserId(data.currentUserId);
-              if (data.jwtToken) setJwtToken(data.jwtToken);
-              if (data.currentUserInfo) updateCurrentUserInfo(data.currentUserInfo);
-            }
-          } catch (jsonErr) {
-            console.warn('Invalid JSON in localStorage, clearing cache:', jsonErr);
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
+        // Purge legacy full-state cache keys to prevent stale data and privacy leaks
+        localStorage.removeItem('marian_best_class_state');
+        localStorage.removeItem('bc_persistent_state');
+        localStorage.removeItem('bc_persistent_state_v2');
+
+        // Check if access or refresh token exists
+        const accessToken = localStorage.getItem('bc_access_token');
+        const refreshToken = localStorage.getItem('bc_refresh_token');
+
+        if (accessToken || refreshToken) {
+          const effectiveToken = accessToken || '';
+          if (effectiveToken) {
+            setJwtToken(effectiveToken);
           }
+
+          // Fetch user profile from Django backend to verify token & establish current user
+          fetch('http://localhost:8000/api/auth/profile/', {
+            headers: effectiveToken ? { 'Authorization': `Bearer ${effectiveToken}` } : {}
+          })
+            .then(async (res) => {
+              if (res.ok) {
+                const userData = await res.json();
+                updateCurrentUserInfo(userData);
+                setLoggedIn(true);
+                setCurrentRole(mapBackendRoleToFrontend(userData.role));
+                setCurrentUserId(userData.id);
+              } else if (res.status === 401 && refreshToken) {
+                // Access token expired, attempt refresh
+                const newAccess = await refreshAccessToken();
+                if (newAccess) {
+                  const profileRes = await fetch('http://localhost:8000/api/auth/profile/', {
+                    headers: { 'Authorization': `Bearer ${newAccess}` }
+                  });
+                  if (profileRes.ok) {
+                    const userData = await profileRes.json();
+                    updateCurrentUserInfo(userData);
+                    setLoggedIn(true);
+                    setCurrentRole(mapBackendRoleToFrontend(userData.role));
+                    setCurrentUserId(userData.id);
+                  }
+                }
+              }
+            })
+            .catch((err) => {
+              console.warn('Failed to verify profile session on mount:', err);
+            });
         }
 
         // Fetch persisted settings from Django DB backend
@@ -444,53 +443,12 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           })
           .catch(err => console.warn('Failed to fetch backend settings:', err));
       } catch (e) {
-        console.error('Failed to load persisted state', e);
+        console.error('Failed to initialize session', e);
       } finally {
         setIsInitialized(true);
       }
     }
   }, []);
-
-  // Sync state to localStorage whenever modified
-  useEffect(() => {
-    if (isInitialized && typeof window !== 'undefined') {
-      try {
-        const data = {
-          submissionOpen,
-          evaluationOpen,
-          submissions,
-          users,
-          // criteriaCatalog intentionally NOT cached — always fetched fresh from DB
-          academicYears,
-          activeAcademicYear,
-          students,
-          loggedIn,
-          currentRole,
-          currentUserId,
-          jwtToken,
-          currentUserInfo
-        };
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-      } catch (e) {
-        console.error('Failed to persist state', e);
-      }
-    }
-  }, [
-    isInitialized,
-    submissionOpen,
-    evaluationOpen,
-    submissions,
-    users,
-    criteriaCatalog,
-    academicYears,
-    activeAcademicYear,
-    students,
-    loggedIn,
-    currentRole,
-    currentUserId,
-    jwtToken,
-    currentUserInfo
-  ]);
 
   const setRole = (role: string) => {
     setCurrentRole(role);
@@ -736,7 +694,12 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/users/');
+      const token = jwtToken || localStorage.getItem('bc_access_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch('http://localhost:8000/api/users/', { headers });
       if (res.ok) {
         const data = await res.json();
         setUsers(data);
@@ -928,8 +891,14 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setCurrentUserId(null);
     setJwtToken(null);
     setCurrentUserInfo(null);
+    setCurrentStudentId(1);
+    setSubmissions([]);
+    setUsers([]);
     localStorage.removeItem('bc_access_token');
     localStorage.removeItem('bc_refresh_token');
+    localStorage.removeItem('marian_best_class_state');
+    localStorage.removeItem('bc_persistent_state');
+    localStorage.removeItem('bc_persistent_state_v2');
 
     toast.info('Logged out successfully');
   };
@@ -1013,7 +982,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       const token = jwtToken || localStorage.getItem('bc_access_token');
-      const userEmail = currentUserInfo?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('marian_best_class_state') || '{}')?.currentUserInfo?.email : '');
+      const userEmail = currentUserInfo?.email || users.find((u) => u.id === currentUserId)?.email || '';
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };

@@ -163,6 +163,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
   const [count60to70, setCount60to70] = useState<number>(0);
   const [count50to60, setCount50to60] = useState<number>(0);
   const [count40to50, setCount40to50] = useState<number>(0);
+  const [countOtherPass, setCountOtherPass] = useState<number>(0);
   const [failCount, setFailCount] = useState<number>(0);
   const [passPercentage, setPassPercentage] = useState<number>(0);
 
@@ -457,6 +458,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
           setCount60to70(mb.count60to70 ?? mb['60to70'] ?? 0);
           setCount50to60(mb.count50to60 ?? mb['50to60'] ?? 0);
           setCount40to50(mb.count40to50 ?? mb['40to50'] ?? 0);
+          setCountOtherPass(mb.countOtherPass ?? mb.otherPassCount ?? mb.OtherPass ?? ((mb.count60to70 || 0) + (mb.count50to60 || 0) + (mb.count40to50 || 0)));
           setFailCount(mb.failCount ?? mb['below40'] ?? mb.Fail ?? 0);
         }
         if (sub.evidence?.classPassPercentage !== undefined) {
@@ -902,14 +904,14 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       }
     }
 
-    const totalStudents = count90Above + count80to90 + count70to80 + failCount;
+    const totalStudents = count90Above + count80to90 + count70to80 + countOtherPass + failCount;
     const passedStudents = totalStudents - failCount;
     const autoPassPercentage = totalStudents > 0 ? parseFloat(((passedStudents / totalStudents) * 100).toFixed(2)) : 0;
     const effectivePassPercentage = passPercentage > 0 ? passPercentage : autoPassPercentage;
 
     let finalDescription = description.trim();
     if (isAcademicCategory && !finalDescription) {
-      finalDescription = `${academicSubmissionType} Mark Summary — ≥90%: ${count90Above}, 80-90%: ${count80to90}, 70-80%: ${count70to80}, Fail: ${failCount} (Pass: ${effectivePassPercentage}%, Total: ${totalStudents} students)`;
+      finalDescription = `${academicSubmissionType} Mark Summary — ≥90%: ${count90Above}, 80-90%: ${count80to90}, 70-80%: ${count70to80}, Other Pass: ${countOtherPass}, Fail: ${failCount} (Pass: ${effectivePassPercentage}%, Total: ${totalStudents} students)`;
     } else if (isStartups && !finalDescription) {
       finalDescription = `Startup: ${startupName.trim()} | Reg. Date: ${startupDate} | Govt ID: ${startupGovtId.trim()}`;
     } else if (isResearch && !finalDescription) {
@@ -975,9 +977,10 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
           count90Above,
           count80to90,
           count70to80,
+          countOtherPass,
           failCount
         },
-        grades: { S: count90Above, APlus: count80to90, A: count70to80, Fail: failCount },
+        grades: { S: count90Above, APlus: count80to90, A: count70to80, OtherPass: countOtherPass, Fail: failCount },
         classPassPercentage: effectivePassPercentage,
         totalStudents
       }
@@ -1512,6 +1515,22 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                             </div>
 
                             <div className="form-group">
+                              <label className="form-label" style={{ color: '#0d9488', fontWeight: 800, fontSize: '0.8rem' }}>
+                                Other Pass (40%–70% / B, C, D)
+                              </label>
+                              <input
+                                type="number"
+                                className="input"
+                                min={0}
+                                placeholder="0"
+                                value={countOtherPass === 0 ? '' : countOtherPass}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => setCountOtherPass(Math.max(0, parseInt(e.target.value) || 0))}
+                                required
+                              />
+                            </div>
+
+                            <div className="form-group">
                               <label className="form-label" style={{ color: '#dc2626', fontWeight: 800, fontSize: '0.8rem' }}>
                                 {labelFail}
                               </label>
@@ -1543,6 +1562,21 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                                 onChange={(e) => setPassPercentage(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
                                 required
                               />
+                            </div>
+
+                            <div style={{ gridColumn: '1 / -1', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                              <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>
+                                👥 Total Accounted: <strong style={{ color: '#0f172a' }}>{count90Above + count80to90 + count70to80 + countOtherPass + failCount}</strong> students
+                              </span>
+                              <span style={{ fontSize: '0.82rem', color: '#059669', fontWeight: 600 }}>
+                                ✅ Passed: <strong style={{ color: '#059669' }}>{count90Above + count80to90 + count70to80 + countOtherPass}</strong>
+                              </span>
+                              <span style={{ fontSize: '0.82rem', color: '#dc2626', fontWeight: 600 }}>
+                                ❌ Failed: <strong style={{ color: '#dc2626' }}>{failCount}</strong>
+                              </span>
+                              <span style={{ fontSize: '0.82rem', color: '#7c3aed', fontWeight: 700 }}>
+                                Calculated Pass: {(count90Above + count80to90 + count70to80 + countOtherPass + failCount) > 0 ? (((count90Above + count80to90 + count70to80 + countOtherPass) / (count90Above + count80to90 + count70to80 + countOtherPass + failCount)) * 100).toFixed(2) : '0'}%
+                              </span>
                             </div>
                           </>
                         );
@@ -2149,6 +2183,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                                   <span style={{ color: '#4f46e5' }}>≥90%: {sub.evidence.markBreakdown?.count90Above ?? sub.evidence.grades?.S ?? 0}</span> |
                                   <span style={{ color: '#0284c7' }}>80-90%: {sub.evidence.markBreakdown?.count80to90 ?? sub.evidence.grades?.APlus ?? 0}</span> |
                                   <span style={{ color: '#059669' }}>70-80%: {sub.evidence.markBreakdown?.count70to80 ?? sub.evidence.grades?.A ?? 0}</span> |
+                                  <span style={{ color: '#0d9488' }}>Other Pass: {sub.evidence.markBreakdown?.countOtherPass ?? sub.evidence.grades?.OtherPass ?? 0}</span> |
                                   <span style={{ color: '#dc2626' }}>Fail: {sub.evidence.markBreakdown?.failCount ?? sub.evidence.grades?.Fail ?? 0}</span> |
                                   <span style={{ color: '#7c3aed' }}>Pass: {sub.evidence.classPassPercentage !== undefined ? `${sub.evidence.classPassPercentage}%` : '-'}</span>
                                 </div>

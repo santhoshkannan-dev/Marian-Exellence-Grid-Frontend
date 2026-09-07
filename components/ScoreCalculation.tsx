@@ -13,25 +13,38 @@ export const ScoreCalculation: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', alignItems: 'stretch' }}>
         {/* Score formulation card */}
         <div className="card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', background: '#ffffff', borderRadius: '24px', border: '1.5px solid var(--glass-border)' }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0, borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
-            Calculation Steps
-          </h3>
+          <div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0, borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
+              Authoritative Indexing Formula
+            </h3>
+            <div style={{ background: '#f0f4ff', border: '1px solid #c7d2fe', borderRadius: '14px', padding: '16px', marginTop: '16px' }}>
+              <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.05rem', color: '#3730a3' }}>
+                M = max(0, (S - P) + Mod) ÷ N
+              </div>
+              <div style={{ fontFamily: 'monospace', fontSize: '0.84rem', color: '#4338ca', marginTop: '6px' }}>
+                Mod = min(200, max(0, 2 × (N - n)))
+              </div>
+              <p style={{ fontSize: '0.78rem', color: '#6366f1', margin: '8px 0 0 0' }}>
+                S = Evaluated Marks | P = Penalties | N = Class Size | n = Smallest Class (Benchmark)
+              </p>
+            </div>
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: '#ffffff', fontWeight: 800, fontSize: '0.84rem', flexShrink: 0 }}>1</span>
               <div>
-                <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>Obtained Score</h4>
-                <p className="muted" style={{ fontSize: '0.84rem', margin: 0 }}>Score calculated according to the approved evaluation criteria across all 13 categories.</p>
+                <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>Obtained Net Score (S - P)</h4>
+                <p className="muted" style={{ fontSize: '0.84rem', margin: 0 }}>Verified marks across all 13 evaluation categories minus any class penalty points.</p>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: '#ffffff', fontWeight: 800, fontSize: '0.84rem', flexShrink: 0 }}>2</span>
               <div>
-                <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>Moderation Mark</h4>
+                <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>Class Strength Moderation Mark (Mod)</h4>
                 <p className="muted" style={{ fontSize: '0.84rem', margin: 0 }}>
-                  Moderation is based on class strength (Range: 0–200). The minimum-strength class receives 0 moderation marks, while classes with higher strength receive proportionally higher marks to normalize scale.
+                  Moderation is based on class strength (Range: 0–200). The benchmark smallest class receives 0 moderation marks, while larger classes receive 2 marks per additional student up to a max cap of 200 marks.
                 </p>
               </div>
             </div>
@@ -39,17 +52,17 @@ export const ScoreCalculation: React.FC = () => {
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: '#ffffff', fontWeight: 800, fontSize: '0.84rem', flexShrink: 0 }}>3</span>
               <div>
-                <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>Total Score</h4>
-                <p className="muted" style={{ fontSize: '0.84rem', margin: 0 }}>Total Score = Obtained Score + Moderation Mark</p>
+                <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>Total Moderated Score</h4>
+                <p className="muted" style={{ fontSize: '0.84rem', margin: 0 }}>Total Score = max(0, Net Obtained Score + Moderation Mark)</p>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: '#ffffff', fontWeight: 800, fontSize: '0.84rem', flexShrink: 0 }}>4</span>
               <div>
-                <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>Class Index Mark</h4>
+                <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>Class Index Mark (M)</h4>
                 <p className="muted" style={{ fontSize: '0.84rem', margin: 0 }}>
-                  Class Index Mark = Total Score ÷ Number of Students. This Class Index is used for subsequent tags and rankings rather than comparing raw totals alone.
+                  Class Index Mark M = Total Score ÷ N. This per-capita normalized index determines final institutional rankings fairly without class-size distortion.
                 </p>
               </div>
             </div>

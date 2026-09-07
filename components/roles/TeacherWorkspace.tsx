@@ -206,11 +206,12 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
   // ----------------------------------------------------
   // MODERATION FORMULA M (INDEX) CALCULATION
-  // Formula: M = (S - P) / (N^2) * (1 + 100 * (N - n))
+  // Formula: M = max(0, (S - P) + Mod) / N
+  //   where Mod = min(200, max(0, 2 * (N - n)))
   //   S = sum of marks on evaluated/locked submissions
   //   P = Class.negative_points (penalties)
   //   N = Class.num_students (class size)
-  //   n = smallestClassSize (benchmark, default 30)
+  //   n = smallestClassSize (benchmark, default 20)
   // ----------------------------------------------------
   const classN = matchingClassIndexEntry?.N && matchingClassIndexEntry.N > 0
     ? matchingClassIndexEntry.N
@@ -224,15 +225,15 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
   const benchmarkN = matchingClassIndexEntry?.n !== undefined
     ? matchingClassIndexEntry.n
-    : (smallestClassSize || 30);
+    : (smallestClassSize || 20);
 
   const classS = matchingClassIndexEntry?.S !== undefined
     ? matchingClassIndexEntry.S
     : classTotalScore;
 
-  const computedM = classN > 0
-    ? ((classS - classP) / (classN * classN)) * (1 + 100 * (classN - benchmarkN))
-    : 0;
+  const computedMod = Math.min(200, Math.max(0, 2 * (classN - benchmarkN)));
+  const computedTotal = Math.max(0, (classS - classP) + computedMod);
+  const computedM = classN > 0 ? (computedTotal / classN) : 0;
 
   const moderatedM = matchingClassIndexEntry && matchingClassIndexEntry.M !== null && matchingClassIndexEntry.M !== undefined
     ? matchingClassIndexEntry.M
