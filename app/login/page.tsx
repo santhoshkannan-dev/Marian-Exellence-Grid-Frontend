@@ -16,7 +16,11 @@ export default function LoginPage() {
   // Load Google Identity Services SDK
   useEffect(() => {
     const initGoogleSignIn = () => {
-      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '844955988511-9f9oh4sjrp3eqoimenpkdg0ho3ljr1bo.apps.googleusercontent.com';
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        console.warn('Google Client ID is not configured in NEXT_PUBLIC_GOOGLE_CLIENT_ID.');
+        return;
+      }
       if ((window as any).google && (window as any).google.accounts) {
         (window as any).google.accounts.id.initialize({
           client_id: clientId,

@@ -64,10 +64,31 @@ export interface SubmissionEvidence {
   [key: string]: any;
 }
 
+export interface AcademicGradeBreakdownData {
+  id?: number;
+  s_grade_count: number;
+  a_plus_grade_count: number;
+  a_grade_count: number;
+  other_pass_count: number;
+  failed_count: number;
+  class_pass_percentage: number;
+  total_students: number;
+}
+
+export interface CriteriaVersionInfo {
+  id: number;
+  academic_year: string;
+  version: number;
+  name: string;
+  is_locked: boolean;
+}
+
 export interface Submission {
   id: number;
   studentId: number;
   criteriaId: number;
+  criteria_version?: number | null;
+  criteria_version_info?: CriteriaVersionInfo | null;
   academicYear?: string;
   startDate?: string;
   endDate?: string;
@@ -79,6 +100,7 @@ export interface Submission {
   eventId?: string;
   evaluatorVerified?: boolean;
   evidence?: SubmissionEvidence;
+  grade_breakdown?: AcademicGradeBreakdownData | null;
   verifiedByName?: string;
   user_email?: string;
   userEmail?: string;

@@ -450,7 +450,16 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         if (sub.evidence?.submissionType) {
           setAcademicSubmissionType(sub.evidence.submissionType as 'Sem Result' | 'SAVE Sem Result');
         }
-        if (sub.evidence?.markBreakdown || sub.evidence?.grades) {
+        if (sub.grade_breakdown) {
+          setCount90Above(sub.grade_breakdown.s_grade_count || 0);
+          setCount80to90(sub.grade_breakdown.a_plus_grade_count || 0);
+          setCount70to80(sub.grade_breakdown.a_grade_count || 0);
+          setCountOtherPass(sub.grade_breakdown.other_pass_count || 0);
+          setFailCount(sub.grade_breakdown.failed_count || 0);
+          if (sub.grade_breakdown.class_pass_percentage !== undefined) {
+            setPassPercentage(sub.grade_breakdown.class_pass_percentage);
+          }
+        } else if (sub.evidence?.markBreakdown || sub.evidence?.grades) {
           const mb = sub.evidence.markBreakdown || sub.evidence.grades || {};
           setCount90Above(mb.count90Above ?? mb['90Above'] ?? mb.S ?? 0);
           setCount80to90(mb.count80to90 ?? mb['80to90'] ?? mb.APlus ?? 0);
@@ -461,7 +470,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
           setCountOtherPass(mb.countOtherPass ?? mb.otherPassCount ?? mb.OtherPass ?? ((mb.count60to70 || 0) + (mb.count50to60 || 0) + (mb.count40to50 || 0)));
           setFailCount(mb.failCount ?? mb['below40'] ?? mb.Fail ?? 0);
         }
-        if (sub.evidence?.classPassPercentage !== undefined) {
+        if (!sub.grade_breakdown && sub.evidence?.classPassPercentage !== undefined) {
           setPassPercentage(sub.evidence.classPassPercentage);
         }
         if (sub.evidence?.startupName) setStartupName(sub.evidence.startupName);
@@ -972,17 +981,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     const computedEvidence = isAcademicCategory
       ? {
         type: 'academic_marks',
-        submissionType: academicSubmissionType,
-        markBreakdown: {
-          count90Above,
-          count80to90,
-          count70to80,
-          countOtherPass,
-          failCount
-        },
-        grades: { S: count90Above, APlus: count80to90, A: count70to80, OtherPass: countOtherPass, Fail: failCount },
-        classPassPercentage: effectivePassPercentage,
-        totalStudents
+        submissionType: academicSubmissionType
       }
       : isOnlineCourses
         ? {
@@ -1071,6 +1070,16 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       }
     }
 
+    const gradeBreakdownPayload = isAcademicCategory ? {
+      s_grade_count: count90Above,
+      a_plus_grade_count: count80to90,
+      a_grade_count: count70to80,
+      other_pass_count: countOtherPass,
+      failed_count: failCount,
+      class_pass_percentage: effectivePassPercentage,
+      total_students: totalStudents
+    } : null;
+
     if (editingSubId) {
       updateSubmission(editingSubId, {
         criteriaId: selectedCriteriaId,
@@ -1080,7 +1089,8 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         startDate: (isOnlineCourses || isInternshipsCategory) ? startDate : (isCompetitiveExamsCategory || isUpscExamItem) ? examDate : undefined,
         endDate: (isOnlineCourses || isInternshipsCategory) ? endDate : undefined,
         status: initialStatus,
-        evidence: computedEvidence
+        evidence: computedEvidence,
+        grade_breakdown: gradeBreakdownPayload
       });
       setEditingSubId(null);
     } else {
@@ -1095,7 +1105,8 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         startDate: (isOnlineCourses || isInternshipsCategory) ? startDate : (isCompetitiveExamsCategory || isUpscExamItem) ? examDate : undefined,
         endDate: (isOnlineCourses || isInternshipsCategory) ? endDate : undefined,
         evaluatorVerified: false,
-        evidence: computedEvidence
+        evidence: computedEvidence,
+        grade_breakdown: gradeBreakdownPayload
       });
     }
 
@@ -2178,7 +2189,16 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                           </td>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {sub.evidence?.type === 'academic_marks' || sub.evidence?.type === 'academic_grades' || sub.evidence?.markBreakdown || sub.evidence?.grades ? (
+                              {sub.grade_breakdown ? (
+                                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                  <span style={{ color: '#4f46e5' }}>≥90%: {sub.grade_breakdown.s_grade_count}</span> |
+                                  <span style={{ color: '#0284c7' }}>80-90%: {sub.grade_breakdown.a_plus_grade_count}</span> |
+                                  <span style={{ color: '#059669' }}>70-80%: {sub.grade_breakdown.a_grade_count}</span> |
+                                  <span style={{ color: '#0d9488' }}>Other Pass: {sub.grade_breakdown.other_pass_count}</span> |
+                                  <span style={{ color: '#dc2626' }}>Fail: {sub.grade_breakdown.failed_count}</span> |
+                                  <span style={{ color: '#7c3aed' }}>Pass: {sub.grade_breakdown.class_pass_percentage !== undefined ? `${sub.grade_breakdown.class_pass_percentage}%` : '-'}</span>
+                                </div>
+                              ) : sub.evidence?.type === 'academic_marks' || sub.evidence?.type === 'academic_grades' || sub.evidence?.markBreakdown || sub.evidence?.grades ? (
                                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                                   <span style={{ color: '#4f46e5' }}>≥90%: {sub.evidence.markBreakdown?.count90Above ?? sub.evidence.grades?.S ?? 0}</span> |
                                   <span style={{ color: '#0284c7' }}>80-90%: {sub.evidence.markBreakdown?.count80to90 ?? sub.evidence.grades?.APlus ?? 0}</span> |
