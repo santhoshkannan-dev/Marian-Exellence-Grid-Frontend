@@ -21,6 +21,7 @@ export const viewport: Viewport = {
 };
 
 import { ToastProvider } from '@/components/ToastProvider';
+import { ChatBotBugReporter } from '@/components/ChatBotBugReporter';
 
 export default function RootLayout({
   children,
@@ -39,10 +40,12 @@ export default function RootLayout({
           <ToastProvider />
           <NavSidebar />
           {children}
+          <ChatBotBugReporter />
           <Footer />
         </AppContextProvider>
       </body>
     </html>
   );
 }
+
 
