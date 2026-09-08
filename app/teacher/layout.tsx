@@ -8,16 +8,21 @@ import { useApp } from '@/context/AppContext';
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loggedIn, logout, selectedAcademicYear, isInitialized } = useApp();
+  const { loggedIn, currentRole, logout, selectedAcademicYear, isInitialized } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated or unauthorized role
   React.useEffect(() => {
-    if (isInitialized && !loggedIn) {
-      router.push('/login');
+    if (isInitialized) {
+      if (!loggedIn) {
+        router.push('/login');
+      } else if (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin' && currentRole !== 'iqac') {
+        const dest = (currentRole === 'student') ? '/student/dashboard' : '/evaluator/dashboard';
+        router.push(dest);
+      }
     }
-  }, [loggedIn, isInitialized, router]);
+  }, [loggedIn, currentRole, isInitialized, router]);
 
   if (!isInitialized) {
     return (
@@ -27,7 +32,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  if (!loggedIn) {
+  if (!loggedIn || (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin' && currentRole !== 'iqac')) {
     return null;
   }
 
