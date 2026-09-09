@@ -180,7 +180,7 @@ export const LandingPage: React.FC = () => {
       });
 
       const evaluatedScore = matched
-        .filter((s) => ['Approved', 'Verified', 'Student Rep Verified', 'Evaluated', 'Locked'].includes(s.status))
+        .filter((s) => ['Evaluated', 'Locked'].includes(s.status))
         .reduce((acc, curr) => acc + (curr.marks || 0), 0);
 
       return {
@@ -191,47 +191,35 @@ export const LandingPage: React.FC = () => {
     [submissions, activeAcademicYear, users, students]
   );
 
-  // Active Standings ordered strictly by Class Points
+  // Active Standings ordered strictly by Class Points from backend
   const activeStandingsData: StandingItem[] = React.useMemo(() => {
     const palette = ['#4f46e5', '#059669', '#d97706', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316', '#3b82f6', '#10b981', '#ef4444'];
 
-    // Priority 1: Official class ranking from classIndexData (/api/class-index/)
+    // Priority 1: Official class ranking from backend classIndexData (/api/class-index/)
     if (classIndexData && classIndexData.length > 0) {
-      const mapped = classIndexData.map((entry) => {
-        const { count, score } = getClassSubmissionsCountAndScore(entry.class_name);
+      // Backend already returns classes sorted by M descending with authoritative rank
+      const rankedEntries = classIndexData.filter((e) => e.rank !== null && e.rank !== undefined);
+      const sortedEntries = (rankedEntries.length > 0 ? rankedEntries : classIndexData).slice(0, 10);
+
+      const top10 = sortedEntries.map((entry, idx) => {
+        const { count } = getClassSubmissionsCountAndScore(entry.class_name);
         const fallback = top10FallbackData.find((f) => f.className.toLowerCase() === entry.class_name.toLowerCase());
         const totalSubmissions = count > 0 ? count : (fallback ? fallback.totalSubmissions : 0);
-        // Moderated class index M defines official ranking score; fallback to evaluated marks S or computed score
-        const rawScore = entry.M !== null && entry.M !== undefined && entry.M > 0
-          ? entry.M
-          : (entry.S > 0 ? entry.S : (score > 0 ? score : (fallback ? fallback.totalScore : 0)));
-        const totalScore = Math.max(0, rawScore);
+        const officialScore = entry.M !== null && entry.M !== undefined ? entry.M : (entry.total_score || entry.S || 0);
 
         return {
-          rank: 0,
+          rank: entry.rank || idx + 1,
           className: entry.class_name,
           department: entry.department || 'General',
           totalSubmissions,
-          totalScore,
+          totalScore: Math.max(0, officialScore),
           percentage: 0,
-          color: palette[0],
+          color: palette[idx % palette.length],
           M: entry.M,
           S: entry.S,
           P: entry.P,
         };
       });
-
-      // Rank strictly based on class points (totalScore) descending, then totalSubmissions
-      mapped.sort((a, b) => {
-        if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-        return b.totalSubmissions - a.totalSubmissions;
-      });
-
-      const top10 = mapped.slice(0, 10).map((item, idx) => ({
-        ...item,
-        rank: idx + 1,
-        color: palette[idx % palette.length],
-      }));
 
       const grandTotal = top10.reduce((sum, item) => sum + item.totalScore, 0) || 1;
       return top10.map((item) => ({

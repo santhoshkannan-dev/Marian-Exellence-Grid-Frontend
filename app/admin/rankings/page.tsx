@@ -324,7 +324,12 @@ export default function ClassRankingsPage() {
         {ranked.length >= 1 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: '16px' }}>
             {ranked.slice(0, 3).map((entry) => {
-              const pod = podiumColors[entry.rank];
+              const pod = podiumColors[entry.rank] || {
+                bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)',
+                border: '#cbd5e1',
+                emoji: '🏅',
+                label: `Rank #${entry.rank}`
+              };
               const isExpanded = expandedClass === entry.class_name;
               return (
                 <div
@@ -430,7 +435,7 @@ export default function ClassRankingsPage() {
                           title="Click to view submissions and marks awarded for this class"
                         >
                           <td style={{ padding: '14px 16px 14px 0', fontWeight: 900, fontSize: '1.1rem', color: entry.rank <= 3 ? '#4F46E5' : '#374151' }}>
-                            {entry.rank <= 3 ? podiumColors[entry.rank].emoji : '#' + entry.rank}
+                            {entry.rank <= 3 && podiumColors[entry.rank] ? podiumColors[entry.rank].emoji : '#' + entry.rank}
                           </td>
                           <td style={{ padding: '14px 16px 14px 0' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -105,7 +105,7 @@ export default function LoginPage() {
       const targetRole = ((result as any).user?.role || overrideRole || 'student').toLowerCase();
       if (targetRole === 'student') router.push('/student/dashboard');
       else if (targetRole === 'teacher' || targetRole === 'faculty') router.push('/teacher/dashboard');
-      else if (targetRole === 'admin') router.push('/admin/academic-years');
+      else if (targetRole === 'admin' || targetRole === 'iqac') router.push('/admin/academic-years');
       else if (targetRole === 'evaluator' || targetRole === 'evaluation') router.push('/evaluator/dashboard');
     } else {
       setErrorMsg(result.error || 'Bypass authentication failed.');
@@ -184,9 +184,10 @@ export default function LoginPage() {
                     <option value="santhosh.25pmc152@mariancollege.org">Student/DQC Rep (santhosh.25pmc152 - II MCA)</option>
                     <option value="amal.25pmc114@mariancollege.org">PG Student (amal.25pmc114 - II MCA)</option>
                     <option value="santhosh.25ubc154@mariancollege.org">UG Student (santhosh.25ubc154 - II BCA A)</option>
-                    <option value={JSON.stringify({email: "kochumol.abraham@mariancollege.org", role: "faculty"})}>Class Teacher (Kochumol Abraham)</option>
-                    <option value={JSON.stringify({email: "allen.george@mariancollege.org", role: "evaluation"})}>Evaluator (Allen George)</option>
-                    <option value="admin@mariancollege.org">Admin</option>
+                    <option value="kochumol.abraham@mariancollege.org">Class Teacher / Faculty (Kochumol Abraham)</option>
+                    <option value="allen.george@mariancollege.org">Evaluator (Allen George)</option>
+                    <option value="iqac@mariancollege.org">IQAC Coordinator (iqac@mariancollege.org)</option>
+                    <option value="admin@mariancollege.org">Institutional Admin (admin@mariancollege.org)</option>
                   </select>
                 </div>
               </div>

@@ -21,14 +21,21 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   if (!isInitialized) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
+        <p className="text-sm font-semibold text-gray-500">Verifying student credentials...</p>
+        <span className="sr-only">Loading student portal</span>
       </div>
     );
   }
 
   if (!loggedIn) {
-    return null;
+    return (
+      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
+        <p className="text-sm font-semibold text-gray-500">Redirecting to login portal...</p>
+      </div>
+    );
   }
 
   const studentNav = [
