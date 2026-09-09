@@ -30,7 +30,18 @@ export type { SubmissionContextType } from '@/context/SubmissionContext';
 export { useRankings } from '@/context/RankingContext';
 export type { ClassIndexEntry, RankingContextType } from '@/context/RankingContext';
 
-import { AuthProvider, useAuth } from '@/context/AuthContext';
+export interface EvaluatorUser {
+  id?: number | string;
+  email: string;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  department?: string;
+  assigned_categories: string[];
+  created_at?: string;
+}
+
+import { AuthProvider, useAuth, mapBackendRoleToFrontend } from '@/context/AuthContext';
 import { CriteriaProvider, useCriteria, Course } from '@/context/CriteriaContext';
 import { SubmissionProvider, useSubmissions } from '@/context/SubmissionContext';
 import { RankingProvider, useRankings, ClassIndexEntry } from '@/context/RankingContext';
@@ -92,12 +103,19 @@ export interface AppContextType {
   addUserGroup: (group: Omit<UserGroup, 'id'>) => void;
   deleteUserGroup: (groupId: string) => void;
   isStudentRep: boolean;
+  isDqcMember: boolean;
   toggleStudentRepMode: () => void;
   addUserToGroup: (groupId: string, email: string) => boolean;
   removeUserFromGroup: (groupId: string, email: string) => void;
   updateUserProfile: (name: string, className: string) => Promise<{ success: boolean; error?: string }>;
   editingSubId: number | null;
   setEditingSubId: (id: number | null) => void;
+  evaluators: EvaluatorUser[];
+  fetchEvaluators: () => Promise<void>;
+  createEvaluator: (data: { email: string; name?: string; assigned_categories?: string[] }) => Promise<{ success: boolean; error?: string; data?: any }>;
+  updateEvaluatorCategories: (email: string, assigned_categories: string[], name?: string) => Promise<{ success: boolean; error?: string; data?: any }>;
+  deleteEvaluator: (email: string) => Promise<{ success: boolean; error?: string }>;
+
   classes: any[];
   departments: any[];
   courses: Course[];
@@ -158,6 +176,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
   const [users, setUsers] = useState<AppUser[]>(defaultUsers);
   const [students, setStudents] = useState<Student[]>(defaultStudents);
   const [userGroups, setUserGroups] = useState<UserGroup[]>(defaultUserGroups);
+  const [evaluators, setEvaluators] = useState<EvaluatorUser[]>([]);
 
   // Sync settings helper
   const syncSettingsToBackend = useCallback(async (updates: Record<string, any>) => {
@@ -214,21 +233,32 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
         apiClient.get('/user-groups/').catch(() => null),
       ]);
 
-      if (Array.isArray(usersData)) {
-        setUsers(usersData);
+      if (Array.isArray(usersData) && usersData.length > 0) {
+        setUsers(
+          usersData.map((u: any) => ({
+            id: u.id,
+            name: u.first_name && u.last_name ? `${u.first_name} ${u.last_name}`.trim() : u.name || u.email,
+            email: u.email,
+            role: mapBackendRoleToFrontend(u.role),
+            className: u.class_name_display || u.class_name || '',
+            department: u.department_name || u.department || '',
+            isApproved: u.is_active ?? true,
+          }))
+        );
         const studentUsers = usersData.filter((u: any) => u.role === 'student');
         if (studentUsers.length > 0) {
           setStudents(
             studentUsers.map((u: any) => ({
               id: u.id,
-              name: u.name || u.username || u.email,
+              name: u.first_name && u.last_name ? `${u.first_name} ${u.last_name}`.trim() : u.name || u.email,
               email: u.email,
-              department: u.department,
-              className: u.className || u.class_name || 'Unknown',
+              department: u.department_name || u.department || '',
+              className: u.class_name_display || u.class_name || 'Unknown',
             }))
           );
         }
       }
+
 
       if (Array.isArray(groupsData) && groupsData.length > 0) {
         setUserGroups(
@@ -245,10 +275,71 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
     }
   }, []);
 
+  const fetchEvaluators = useCallback(async () => {
+    try {
+      const data = await apiClient.get('/evaluators/');
+      if (Array.isArray(data)) {
+        setEvaluators(data);
+      }
+    } catch (e: any) {
+      console.warn('Evaluators fetch encountered warning:', e);
+    }
+  }, []);
+
+  const createEvaluator = useCallback(
+    async (data: { email: string; name?: string; assigned_categories?: string[] }) => {
+      try {
+        const resData = await apiClient.post('/evaluators/', data);
+        setEvaluators((prev) => {
+          const filtered = prev.filter((e) => e.email.toLowerCase() !== resData.email.toLowerCase());
+          return [...filtered, resData];
+        });
+        await criteria.fetchCriteriaCatalog();
+        return { success: true, data: resData };
+      } catch (err: any) {
+        return { success: false, error: err.data?.error || err.message || 'Failed to create evaluator' };
+      }
+    },
+    [criteria]
+  );
+
+  const updateEvaluatorCategories = useCallback(
+    async (email: string, assigned_categories: string[], name?: string) => {
+      try {
+        const payload: any = { assigned_categories };
+        if (name) payload.name = name;
+        const resData = await apiClient.put(`/evaluators/${encodeURIComponent(email)}/`, payload);
+        setEvaluators((prev) =>
+          prev.map((e) => (e.email.toLowerCase() === email.toLowerCase() ? resData : e))
+        );
+        await criteria.fetchCriteriaCatalog();
+        return { success: true, data: resData };
+      } catch (err: any) {
+        return { success: false, error: err.data?.error || err.message || 'Failed to update evaluator' };
+      }
+    },
+    [criteria]
+  );
+
+  const deleteEvaluator = useCallback(
+    async (email: string) => {
+      try {
+        await apiClient.delete(`/evaluators/${encodeURIComponent(email)}/`);
+        setEvaluators((prev) => prev.filter((e) => e.email.toLowerCase() !== email.toLowerCase()));
+        await criteria.fetchCriteriaCatalog();
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err.data?.error || err.message || 'Failed to delete evaluator' };
+      }
+    },
+    [criteria]
+  );
+
   useEffect(() => {
     fetchSettingsAndYears();
     fetchUsersAndGroups();
-  }, [fetchSettingsAndYears, fetchUsersAndGroups]);
+    fetchEvaluators();
+  }, [fetchSettingsAndYears, fetchUsersAndGroups, fetchEvaluators]);
 
   const setAcademicYear = useCallback((year: string) => {
     setSelectedAcademicYear(year);
@@ -480,6 +571,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
       currentUserInfo: auth.currentUserInfo,
       isInitialized: auth.isInitialized,
       isStudentRep: auth.isStudentRep,
+      isDqcMember: auth.isDqcMember,
       setRole: auth.setRole,
       loginAsRole: auth.loginAsRole,
       loginWithGoogleToken: auth.loginWithGoogleToken,
@@ -566,6 +658,11 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
       deleteAcademicYearGlobal,
       setActiveAcademicYearGlobal,
       addUserGlobal,
+      evaluators,
+      fetchEvaluators,
+      createEvaluator,
+      updateEvaluatorCategories,
+      deleteEvaluator,
     }),
     [
       auth,
@@ -601,7 +698,13 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
       deleteAcademicYearGlobal,
       setActiveAcademicYearGlobal,
       addUserGlobal,
+      evaluators,
+      fetchEvaluators,
+      createEvaluator,
+      updateEvaluatorCategories,
+      deleteEvaluator,
     ]
+
   );
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;

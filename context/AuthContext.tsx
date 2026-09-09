@@ -13,7 +13,10 @@ export interface CurrentUserInfo {
   department_code: string | null;
   class_name: string | null;
   picture?: string;
+  is_student_rep?: boolean;
+  is_dqc_member?: boolean;
 }
+
 
 export const mapBackendRoleToFrontend = (backendRole: string): string => {
   if (!backendRole) return '';
@@ -115,6 +118,7 @@ export interface AuthContextType {
   currentUserInfo: CurrentUserInfo | null;
   isInitialized: boolean;
   isStudentRep: boolean;
+  isDqcMember: boolean;
   setRole: (role: string) => void;
   loginAsRole: (role: string) => void;
   loginWithGoogleToken: (idToken: string) => Promise<{ success: boolean; error?: string; user?: any }>;
@@ -150,6 +154,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    const isRep = Boolean(userData.is_student_rep);
+    const isDqc = Boolean(userData.is_dqc_member);
+
     setCurrentUserInfo({
       id: userData.id,
       email: userData.email,
@@ -159,8 +166,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       department_code: departmentCode,
       class_name: className,
       picture: userData.picture,
+      is_student_rep: isRep,
+      is_dqc_member: isDqc,
     });
+
+    if (isRep || isDqc) {
+      setIsStudentRep(true);
+    }
   }, []);
+
 
   const logout = useCallback(async () => {
     try {
@@ -318,6 +332,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsStudentRep((prev) => !prev);
   }, []);
 
+  const isDqcMember = Boolean(currentUserInfo?.is_dqc_member);
+
   return (
     <AuthContext.Provider
       value={{
@@ -329,6 +345,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUserInfo,
         isInitialized,
         isStudentRep,
+        isDqcMember,
         setRole,
         loginAsRole,
         loginWithGoogleToken,
@@ -338,6 +355,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toggleStudentRepMode,
       }}
     >
+
       {children}
     </AuthContext.Provider>
   );

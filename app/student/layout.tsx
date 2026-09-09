@@ -8,34 +8,33 @@ import { useApp } from '@/context/AppContext';
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loggedIn, logout, selectedAcademicYear, isStudentRep, toggleStudentRepMode, isInitialized } = useApp();
+  const { loggedIn, logout, selectedAcademicYear, isStudentRep, isDqcMember, toggleStudentRepMode, isInitialized, currentRole, currentUserInfo } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated, or restrict evaluators to evaluator dashboard
   React.useEffect(() => {
     if (isInitialized && !loggedIn) {
       router.push('/login');
+    } else if (
+      isInitialized &&
+      loggedIn &&
+      (currentRole === 'evaluator' || currentRole === 'evaluation' || currentUserInfo?.role === 'evaluation')
+    ) {
+      router.push('/evaluator/dashboard');
     }
-  }, [loggedIn, isInitialized, router]);
+  }, [loggedIn, isInitialized, currentRole, currentUserInfo, router]);
 
   if (!isInitialized) {
     return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Verifying student credentials...</p>
-        <span className="sr-only">Loading student portal</span>
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  if (!loggedIn) {
-    return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Redirecting to login portal...</p>
-      </div>
-    );
+  if (!loggedIn || currentRole === 'evaluator' || currentRole === 'evaluation' || currentUserInfo?.role === 'evaluation') {
+    return null;
   }
 
   const studentNav = [
@@ -128,7 +127,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         </div>
 
         <div className="portal-sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div className="portal-sidebar-footer-text">{isStudentRep ? 'Student Representative' : 'Student'}</div>
+          <div className="portal-sidebar-footer-text">{isDqcMember ? 'DQC Member' : isStudentRep ? 'Student Rep' : 'Student'}</div>
           <button
             className="btn btn-secondary btn-sm mobile-logout-btn"
             style={{
@@ -204,14 +203,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               style={{
                 padding: '6px 16px',
                 borderRadius: '20px',
-                background: isStudentRep ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : '#e0e7ff',
-                color: isStudentRep ? '#ffffff' : '#3730a3',
+                background: isDqcMember ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : isStudentRep ? 'linear-gradient(135deg, #10b981, #059669)' : '#e0e7ff',
+                color: isDqcMember || isStudentRep ? '#ffffff' : '#3730a3',
                 fontSize: '0.84rem',
                 fontWeight: 700,
-                boxShadow: isStudentRep ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none'
+                boxShadow: isDqcMember ? '0 2px 8px rgba(99, 102, 241, 0.3)' : isStudentRep ? '0 2px 8px rgba(16, 185, 129, 0.3)' : 'none'
               }}
             >
-              {isStudentRep ? '⭐ Student Rep Group Member' : 'Student'}
+              {isDqcMember ? '⭐ DQC Member' : isStudentRep ? '🏅 Student Rep' : 'Student'}
             </span>
 
             <button

@@ -8,39 +8,27 @@ import { useApp } from '@/context/AppContext';
 export default function EvaluatorLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loggedIn, currentRole, logout, selectedAcademicYear, isInitialized } = useApp();
+  const { loggedIn, logout, selectedAcademicYear, isInitialized } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Redirect to login if not authenticated or unauthorized role
+  // Redirect to login if not authenticated
   React.useEffect(() => {
-    if (isInitialized) {
-      if (!loggedIn) {
-        router.push('/login');
-      } else if (currentRole && currentRole !== 'evaluator' && currentRole !== 'evaluation' && currentRole !== 'admin' && currentRole !== 'iqac') {
-        const dest = (currentRole === 'student') ? '/student/dashboard' : '/teacher/dashboard';
-        router.push(dest);
-      }
+    if (isInitialized && !loggedIn) {
+      router.push('/login');
     }
-  }, [loggedIn, currentRole, isInitialized, router]);
+  }, [loggedIn, isInitialized, router]);
 
   if (!isInitialized) {
     return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Verifying evaluator credentials...</p>
-        <span className="sr-only">Loading evaluator portal</span>
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  if (!loggedIn || (currentRole && currentRole !== 'evaluator' && currentRole !== 'evaluation' && currentRole !== 'admin' && currentRole !== 'iqac')) {
-    return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Redirecting to authorized portal...</p>
-      </div>
-    );
+  if (!loggedIn) {
+    return null;
   }
 
   const evaluatorNav = [

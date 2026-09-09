@@ -48,6 +48,8 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     activePage,
     setActivePage,
     isStudentRep,
+    isDqcMember,
+    classes,
     currentUserInfo,
     updateUserProfile,
     editingSubId,
@@ -63,13 +65,14 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     }
   }, [activeTab]);
 
-  // Filter available categories based on role access (Normal Student: 10 student categories; Student Rep / DQC: All categories)
+  // Filter categories: DQC members get ALL categories; Student Reps (non-DQC) and normal students get standard categories
   const availableCriteriaCatalog = React.useMemo(() => {
-    if (isStudentRep) {
+    if (isDqcMember) {
       return criteriaCatalog;
     }
 
-    // Normal students get student-level categories (excluding Academics, Documentation & Programs Organized / class-wide audit categories)
+    // Normal students and non-DQC Student Representatives get standard student categories
+    // (Academics, Documentation & Programs Organized are restricted — class-wide audit categories)
     return criteriaCatalog.filter((cat) => {
       const name = String(cat.category || '').toLowerCase().trim();
       const code = String(cat.code || '').toLowerCase().trim();
@@ -93,7 +96,8 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
 
       return !isRestrictedForNormalStudent;
     });
-  }, [criteriaCatalog, isStudentRep]);
+  }, [criteriaCatalog, isDqcMember]);
+
 
   const { activeAcademicYear } = useApp();
 
@@ -300,8 +304,9 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     if (!isPrizesCategory || !currentItem) return [];
     const itemTitle = String(currentItem.title || '').toLowerCase().trim();
 
+    let items: string[] = [];
     if (itemTitle.includes('outside')) {
-      return [
+      items = [
         '1st Prize (Individual)',
         '2nd Prize (Individual)',
         '3rd Prize (Individual)',
@@ -311,25 +316,35 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         'Participation (Individual)',
         'Participation (Group)'
       ];
+    } else {
+      items = [
+        '1st Prize (Individual)',
+        '2nd Prize (Individual)',
+        '3rd Prize (Individual)',
+        '1st Prize (Group)',
+        '2nd Prize (Group)',
+        '3rd Prize (Group)'
+      ];
     }
 
-    return [
-      '1st Prize (Individual)',
-      '2nd Prize (Individual)',
-      '3rd Prize (Individual)',
-      '1st Prize (Group)',
-      '2nd Prize (Group)',
-      '3rd Prize (Group)'
-    ];
-  }, [isPrizesCategory, currentItem]);
+    if (!isDqcMember) {
+      items = items.filter((item) => !item.toLowerCase().includes('(group)'));
+    }
+    return items;
+  }, [isPrizesCategory, currentItem, isDqcMember]);
 
   const dynamicSubItems = React.useMemo(() => {
     if (currentItem?.rules_json?.subItems && typeof currentItem.rules_json.subItems === 'object') {
       const keys = Object.keys(currentItem.rules_json.subItems);
-      if (keys.length > 0) return keys;
+      if (keys.length > 0) {
+        if (!isDqcMember && isPrizesCategory) {
+          return keys.filter((k) => !k.toLowerCase().includes('(group)') && !k.toLowerCase().includes('group'));
+        }
+        return keys;
+      }
     }
     return [];
-  }, [currentItem]);
+  }, [currentItem, isDqcMember, isPrizesCategory]);
 
   const itemCustomFields = React.useMemo(() => {
     return currentItem?.rules_json?.fields || null;

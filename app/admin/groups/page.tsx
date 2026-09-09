@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { isStaffEmail, isStudentEmail } from '@/data/initialData';
 import { CustomModal } from '@/components/CustomModal';
 
 export default function AdminGroupsPage() {
@@ -30,7 +31,7 @@ export default function AdminGroupsPage() {
     setNewGroupDesc('');
   };
 
-  const handleAddEmail = (groupId: string, e: React.FormEvent) => {
+  const handleAddEmail = async (groupId: string, e: React.FormEvent) => {
     e.preventDefault();
     const emailToAdd = emailInputs[groupId]?.trim().toLowerCase();
 
@@ -44,12 +45,49 @@ export default function AdminGroupsPage() {
       return;
     }
 
-    const success = addUserToGroup(groupId, emailToAdd);
+    const targetGroup = userGroups.find((g) => g.id === groupId);
+    const isClassTeachersCouncil = targetGroup && (targetGroup.id === 'grp-class-teachers' || targetGroup.name.toLowerCase().includes('class teacher'));
+    if (isClassTeachersCouncil && !isStaffEmail(emailToAdd)) {
+      setStatusMsgs((prev) => ({
+        ...prev,
+        [groupId]: {
+          type: 'error',
+          msg: 'Class Teachers Council only permits staff emails in name.name@mariancollege.org format (e.g. allen.george@mariancollege.org). Student emails are not allowed.'
+        }
+      }));
+      return;
+    }
+
+    const isDqcGroup = targetGroup && (targetGroup.id === 'grp-dqc-student-rep' || targetGroup.name.toLowerCase().includes('dqc'));
+    if (isDqcGroup && !isStudentEmail(emailToAdd)) {
+      setStatusMsgs((prev) => ({
+        ...prev,
+        [groupId]: {
+          type: 'error',
+          msg: 'DQC Student Rep Group only permits student emails in name.startingwithnumber@mariancollege.org format (e.g. amal.25pmc114@mariancollege.org). Staff emails are not allowed.'
+        }
+      }));
+      return;
+    }
+
+    const isStudentRepsCouncil = targetGroup && (targetGroup.id === 'grp-student-reps' || targetGroup.name.toLowerCase().includes('student rep'));
+    if (isStudentRepsCouncil && !isStudentEmail(emailToAdd)) {
+      setStatusMsgs((prev) => ({
+        ...prev,
+        [groupId]: {
+          type: 'error',
+          msg: 'Student Representatives only permits student emails in name.startingwithnumber@mariancollege.org format (e.g. santhosh.25pmc152@mariancollege.org).'
+        }
+      }));
+      return;
+    }
+
+    const success = await addUserToGroup(groupId, emailToAdd);
     if (success) {
       setStatusMsgs((prev) => ({ ...prev, [groupId]: { type: 'success', msg: `Added ${emailToAdd} to group!` } }));
       setEmailInputs((prev) => ({ ...prev, [groupId]: '' }));
     } else {
-      setStatusMsgs((prev) => ({ ...prev, [groupId]: { type: 'error', msg: 'Email is already in this group.' } }));
+      setStatusMsgs((prev) => ({ ...prev, [groupId]: { type: 'error', msg: 'Email is already in this group or could not be added.' } }));
     }
   };
 
@@ -85,7 +123,7 @@ export default function AdminGroupsPage() {
             <input
               type="text"
               className="input"
-              placeholder="e.g. DQC Evaluation Panel"
+              placeholder="e.g. Activity Verification Council"
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               required
@@ -164,7 +202,13 @@ export default function AdminGroupsPage() {
                       type="email"
                       className="input"
                       style={{ fontSize: '0.85rem', height: '38px', flex: 1 }}
-                      placeholder="e.g. user@mariancollege.org"
+                      placeholder={
+                        (group.id === 'grp-dqc-student-rep' || group.id === 'grp-student-reps' || group.name.toLowerCase().includes('dqc') || group.name.toLowerCase().includes('student rep'))
+                          ? 'e.g. amal.25pmc114@mariancollege.org'
+                          : (group.id === 'grp-class-teachers' || group.name.toLowerCase().includes('class teacher'))
+                          ? 'e.g. allen.george@mariancollege.org'
+                          : 'e.g. user@mariancollege.org'
+                      }
                       value={emailInputs[group.id] || ''}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -177,7 +221,12 @@ export default function AdminGroupsPage() {
 
                     {/* Quick suggestion dropdown list of existing users */}
                     <datalist id={`user-suggestions-${group.id}`}>
-                      {users.map((u) => (
+                      {(group.id === 'grp-class-teachers' || group.name.toLowerCase().includes('class teacher')
+                        ? users.filter((u) => isStaffEmail(u.email) || u.role === 'teacher' || u.role === 'faculty')
+                        : (group.id === 'grp-dqc-student-rep' || group.id === 'grp-student-reps' || group.name.toLowerCase().includes('dqc') || group.name.toLowerCase().includes('student rep'))
+                        ? users.filter((u) => isStudentEmail(u.email) || u.role === 'student')
+                        : users
+                      ).map((u) => (
                         <option key={u.id} value={u.email}>{u.name} ({u.role})</option>
                       ))}
                     </datalist>
@@ -195,11 +244,51 @@ export default function AdminGroupsPage() {
                   <div style={{ marginTop: '10px' }}>
                     <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>Quick Add Registered Users:</span>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-                      {users.slice(0, 5).map((u) => (
+                      {(group.id === 'grp-class-teachers' || group.name.toLowerCase().includes('class teacher')
+                        ? users.filter((u) => isStaffEmail(u.email) || u.role === 'teacher' || u.role === 'faculty')
+                        : (group.id === 'grp-dqc-student-rep' || group.id === 'grp-student-reps' || group.name.toLowerCase().includes('dqc') || group.name.toLowerCase().includes('student rep'))
+                        ? users.filter((u) => isStudentEmail(u.email) || u.role === 'student')
+                        : users
+                      ).slice(0, 5).map((u) => (
                         <button
                           key={u.id}
                           type="button"
-                          onClick={() => addUserToGroup(group.id, u.email)}
+                          onClick={async () => {
+                            const isCouncil = group.id === 'grp-class-teachers' || group.name.toLowerCase().includes('class teacher');
+                            if (isCouncil && !isStaffEmail(u.email)) {
+                              setStatusMsgs((prev) => ({
+                                ...prev,
+                                [group.id]: {
+                                  type: 'error',
+                                  msg: 'Class Teachers Council only permits staff emails in name.name@mariancollege.org format (e.g. allen.george@mariancollege.org).'
+                                }
+                              }));
+                              return;
+                            }
+                            const isDqc = group.id === 'grp-dqc-student-rep' || group.name.toLowerCase().includes('dqc');
+                            if (isDqc && !isStudentEmail(u.email)) {
+                              setStatusMsgs((prev) => ({
+                                ...prev,
+                                [group.id]: {
+                                  type: 'error',
+                                  msg: 'DQC Student Rep Group only permits student emails in name.startingwithnumber@mariancollege.org format (e.g. amal.25pmc114@mariancollege.org). Staff emails are not allowed.'
+                                }
+                              }));
+                              return;
+                            }
+                            const isRep = group.id === 'grp-student-reps' || group.name.toLowerCase().includes('student rep');
+                            if (isRep && !isStudentEmail(u.email)) {
+                              setStatusMsgs((prev) => ({
+                                ...prev,
+                                [group.id]: {
+                                  type: 'error',
+                                  msg: 'Student Representatives only permits student emails in name.startingwithnumber@mariancollege.org format.'
+                                }
+                              }));
+                              return;
+                            }
+                            await addUserToGroup(group.id, u.email);
+                          }}
                           style={{
                             padding: '3px 8px',
                             background: '#ffffff',
@@ -258,7 +347,9 @@ export default function AdminGroupsPage() {
                           <span>{email}</span>
                           <button
                             type="button"
-                            onClick={() => removeUserFromGroup(group.id, email)}
+                            onClick={async () => {
+                              await removeUserFromGroup(group.id, email);
+                            }}
                             style={{
                               background: 'transparent',
                               border: 'none',
