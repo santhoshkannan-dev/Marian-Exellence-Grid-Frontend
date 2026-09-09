@@ -124,15 +124,12 @@ export const LandingPage: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<StandingItem | null>(null);
   const scrollTrackRef = useRef<HTMLDivElement>(null);
 
-  // Fetch official class ranking index and submissions on mount / academic year change
+  // Fetch official class ranking index on mount / academic year change
   useEffect(() => {
     if (fetchClassIndex) {
       fetchClassIndex(activeAcademicYear || undefined);
     }
-    if (fetchSubmissions) {
-      fetchSubmissions();
-    }
-  }, [activeAcademicYear, fetchClassIndex, fetchSubmissions]);
+  }, [activeAcademicYear, fetchClassIndex]);
 
   // Robust helper to match submissions belonging to a class
   const getClassSubmissionsCountAndScore = React.useCallback(
