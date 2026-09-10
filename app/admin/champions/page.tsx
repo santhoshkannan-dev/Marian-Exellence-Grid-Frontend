@@ -76,9 +76,14 @@ export default function ChampionsManagementPage() {
       formData.append('image', imageFile);
     }
 
+    const token = typeof window !== 'undefined' ? localStorage.getItem('bc_access_token') : null;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     try {
       const res = await fetch('http://localhost:8000/api/champions/', {
         method: 'POST',
+        headers,
         body: formData,
       });
 
@@ -102,9 +107,14 @@ export default function ChampionsManagementPage() {
   };
 
   const confirmDeleteChamp = async (id: number) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('bc_access_token') : null;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     try {
       const res = await fetch(`http://localhost:8000/api/champions/${id}/`, {
         method: 'DELETE',
+        headers,
       });
       if (res.ok) {
         await fetchChampions();

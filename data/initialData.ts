@@ -4,16 +4,43 @@ export interface CriteriaRule {
   marks: number;
 }
 
+export const isStaffEmail = (email: string): boolean => {
+  if (!email || typeof email !== 'string') return false;
+  const clean = email.trim().toLowerCase();
+  if (!clean.endsWith('@mariancollege.org')) return false;
+
+  const localPart = clean.slice(0, -'@mariancollege.org'.length);
+  const parts = localPart.split('.');
+  if (parts.length < 2) return false;
+
+  // Staff format: name.name@mariancollege.org (e.g. kochumol.abraham@mariancollege.org)
+  return parts.every((p) => /^[a-zA-Z]+$/.test(p));
+};
+
+export const isStudentEmail = (email: string): boolean => {
+  if (!email || typeof email !== 'string') return false;
+  const clean = email.trim().toLowerCase();
+  if (!clean.endsWith('@mariancollege.org')) return false;
+
+  const localPart = clean.slice(0, -'@mariancollege.org'.length);
+  const parts = localPart.split('.');
+  if (parts.length < 2) return false;
+
+  return parts.slice(1).some((p) => /^[0-9]/.test(p));
+};
+
 export interface CriteriaItem {
   id: number;
   title: string;
   category?: string;
+  access_level?: string;
   marks: number;
   type: 'count' | 'range' | 'fixed' | 'negative' | 'boolean' | 'date' | 'academic_grades';
   details?: string;
   rules?: CriteriaRule[];
   rules_json?: any;
 }
+
 
 export interface CriteriaCategory {
   id: string;
@@ -313,7 +340,6 @@ export const defaultCriteriaCatalog: CriteriaCategory[] = [
 export const defaultStudents: Student[] = [
   { id: 101, name: "Amal Thomas", className: "II MCA" },
   { id: 102, name: "Santhosh Kannan", className: "II MCA" },
-  { id: 103, name: "Santhosh Kannan", className: "II BCA A" }
 ];
 
 export const defaultSubmissions: Submission[] = [];
@@ -321,28 +347,15 @@ export const defaultSubmissions: Submission[] = [];
 export const defaultUsers: AppUser[] = [
   { id: 101, name: "Amal Thomas", email: "amal.25pmc114@mariancollege.org", role: "student", className: "II MCA", department: "The Post-Graduate Department of Computer Applications", isApproved: true },
   { id: 102, name: "Santhosh Kannan", email: "santhosh.25pmc152@mariancollege.org", role: "student", className: "II MCA", department: "The Post-Graduate Department of Computer Applications", isApproved: true, isStudentRep: true },
-  { id: 103, name: "Santhosh Kannan", email: "santhosh.25ubc154@mariancollege.org", role: "student", className: "II BCA A", department: "The Under-Graduate Department of Computer Applications", isApproved: true },
   { id: 104, name: "Prof. Kochumol Abraham", email: "kochumol.abraham@mariancollege.org", role: "teacher", className: "II MCA", department: "The Post-Graduate Department of Computer Applications", isApproved: true },
   { id: 105, name: "Allen George", email: "allen.george@mariancollege.org", role: "evaluator", department: "Computer Science", isApproved: true },
   { id: 106, name: "IQAC Coordinator", email: "iqac@mariancollege.org", role: "iqac", department: "Internal Quality Assurance Cell", isApproved: true },
   { id: 107, name: "System Administrator", email: "admin@mariancollege.org", role: "admin", department: "Administration", isApproved: true }
 ];
 
-export const defaultAcademicYears = ["2025-2026", "2024-2025", "2023-2024"];
+export const defaultAcademicYears = ["2026-2027", "2025-2026", "2024-2025", "2023-2024"];
 
 export const defaultUserGroups: UserGroup[] = [
-  {
-    id: "grp-evaluation-committee",
-    name: "Evaluation Committee",
-    description: "Evaluator members assigned to review activity submissions.",
-    emails: ["allen.george@mariancollege.org"]
-  },
-  {
-    id: "grp-evaluators",
-    name: "Evaluator Group",
-    description: "Evaluation team members responsible for scoring and finalizing student submissions.",
-    emails: ["allen.george@mariancollege.org"]
-  },
   {
     id: "grp-class-teachers",
     name: "Class Teachers Council",
@@ -352,8 +365,8 @@ export const defaultUserGroups: UserGroup[] = [
   {
     id: "grp-student-reps",
     name: "Student Representatives",
-    description: "Student council and DQC lead members.",
-    emails: ["santhosh.25pmc152@mariancollege.org", "amal.25pmc114@mariancollege.org"]
+    description: "Student council representatives.",
+    emails: ["santhosh.25pmc152@mariancollege.org"]
   },
   {
     id: "grp-dqc-student-rep",
@@ -362,3 +375,4 @@ export const defaultUserGroups: UserGroup[] = [
     emails: ["santhosh.25pmc152@mariancollege.org"]
   }
 ];
+
