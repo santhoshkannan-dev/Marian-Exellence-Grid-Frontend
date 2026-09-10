@@ -30,8 +30,9 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     } else if (
       isInitialized &&
       loggedIn &&
+      currentRole !== 'class_teacher' &&
       !isClassTeacher &&
-      (currentRole === 'evaluator' || currentRole === 'evaluation' || currentUserInfo?.role === 'evaluation')
+      (currentRole === 'evaluator' || currentRole === 'evaluation')
     ) {
       router.push('/evaluator/dashboard');
     }
@@ -45,7 +46,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  if (!loggedIn || (!isClassTeacher && (currentRole === 'evaluator' || currentRole === 'evaluation' || currentUserInfo?.role === 'evaluation'))) {
+  if (!loggedIn || (currentRole !== 'class_teacher' && !isClassTeacher && (currentRole === 'evaluator' || currentRole === 'evaluation'))) {
     return null;
   }
 
@@ -208,7 +209,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            {isEvaluator && (
+            {(isEvaluator || currentUserInfo?.available_roles?.includes('evaluator') || currentUserInfo?.role === 'evaluation') && (
               <button
                 id="role-switch-to-evaluator-btn"
                 className="role-switcher-btn"

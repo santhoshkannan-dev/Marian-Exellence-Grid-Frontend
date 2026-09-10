@@ -10,10 +10,15 @@ export default function EvaluatorManagementPage() {
   const {
     evaluators,
     criteriaCatalog,
+    fetchEvaluators,
     createEvaluator,
     updateEvaluatorCategories,
     deleteEvaluator,
   } = useApp();
+
+  React.useEffect(() => {
+    fetchEvaluators();
+  }, [fetchEvaluators]);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

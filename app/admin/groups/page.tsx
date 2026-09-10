@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { isStaffEmail, isStudentEmail } from '@/data/initialData';
 import { CustomModal } from '@/components/CustomModal';
+import { toast } from 'react-toastify';
 
 export default function AdminGroupsPage() {
-  const { userGroups, users, classes, addUserGroup, deleteUserGroup, addUserToGroup, removeUserFromGroup } = useApp();
+  const { userGroups, users, classes, updateClass, addUserGroup, deleteUserGroup, addUserToGroup, removeUserFromGroup } = useApp();
   const [deleteGroupModal, setDeleteGroupModal] = useState<{ id: string; name: string } | null>(null);
 
   // Create Group State
@@ -362,35 +363,56 @@ export default function AdminGroupsPage() {
                           >
                             <span>{email}</span>
                             {isCouncil && (
-                              assignedTeacherClass ? (
-                                <span
-                                  style={{
-                                    background: '#dcfce7',
-                                    color: '#15803d',
-                                    padding: '1px 6px',
-                                    borderRadius: '4px',
-                                    fontSize: '0.68rem',
-                                    fontWeight: 700
-                                  }}
-                                  title={`Allocated to ${assignedTeacherClass.name}`}
-                                >
-                                  ✓ {assignedTeacherClass.name}
-                                </span>
-                              ) : (
-                                <span
-                                  style={{
-                                    background: '#f1f5f9',
-                                    color: '#64748b',
-                                    padding: '1px 6px',
-                                    borderRadius: '4px',
-                                    fontSize: '0.68rem',
-                                    fontWeight: 600
-                                  }}
-                                  title="Not yet allocated to any class"
-                                >
-                                  Unassigned
-                                </span>
-                              )
+                              <select
+                                id={`assign-class-${email.replace(/[^a-zA-Z0-9]/g, '-')}`}
+                                value={assignedTeacherClass ? String(assignedTeacherClass.id) : ''}
+                                onChange={async (e) => {
+                                  const selectedClassId = e.target.value;
+                                  try {
+                                    if (!selectedClassId) {
+                                      if (assignedTeacherClass) {
+                                        const res = await updateClass(assignedTeacherClass.id, { classTeacher: '' });
+                                        if (res && res.success !== false) {
+                                          toast.success(`Unassigned ${email} from ${assignedTeacherClass.name}`);
+                                        } else {
+                                          toast.error(res?.error || 'Failed to unassign class');
+                                        }
+                                      }
+                                    } else {
+                                      if (assignedTeacherClass && String(assignedTeacherClass.id) !== selectedClassId) {
+                                        await updateClass(assignedTeacherClass.id, { classTeacher: '' });
+                                      }
+                                      const res = await updateClass(Number(selectedClassId), { classTeacher: email });
+                                      if (res && res.success !== false) {
+                                        const targetCls = classes.find((c: any) => String(c.id) === selectedClassId);
+                                        toast.success(`Allocated ${email} to ${targetCls?.name || 'class'}!`);
+                                      } else {
+                                        toast.error(res?.error || 'Failed to allocate class');
+                                      }
+                                    }
+                                  } catch (err: any) {
+                                    toast.error(err.message || 'Failed to update class assignment');
+                                  }
+                                }}
+                                style={{
+                                  padding: '2px 6px',
+                                  fontSize: '0.72rem',
+                                  borderRadius: '6px',
+                                  border: assignedTeacherClass ? '1px solid #86efac' : '1px solid #cbd5e1',
+                                  background: assignedTeacherClass ? '#f0fdf4' : '#ffffff',
+                                  color: assignedTeacherClass ? '#166534' : '#475569',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                                title="Allocate this council teacher to a class"
+                              >
+                                <option value="">-- Assign Class --</option>
+                                {classes?.map((c: any) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name} {c.classTeacher && c.classTeacher.toLowerCase() !== email.toLowerCase() ? `(${c.classTeacher.split('@')[0]})` : ''}
+                                  </option>
+                                ))}
+                              </select>
                             )}
                             {isDqc && assignedDqcClass && (
                               <span

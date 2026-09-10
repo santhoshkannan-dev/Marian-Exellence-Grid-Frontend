@@ -37,11 +37,19 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     return null;
   }
 
+  const hasRepAccess = Boolean(
+    isStudentRep ||
+    isDqcMember ||
+    currentUserInfo?.is_student_rep ||
+    currentUserInfo?.is_dqc_member ||
+    currentUserInfo?.available_roles?.includes('student_rep')
+  );
+
   const studentNav = [
     { id: 'dashboard', label: 'Dashboard', href: '/student/dashboard' },
     { id: 'submit', label: 'Submit Activity', href: '/student/submit' },
     { id: 'submissions', label: 'My Submissions', href: '/student/submissions' },
-    ...(isStudentRep
+    ...(hasRepAccess
       ? [{ id: 'verification', label: 'Group Verification', href: '/student/verification' }]
       : []),
     { id: 'profile', label: 'My Profile', href: '/student/profile' },

@@ -365,7 +365,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
     fetchSettingsAndYears();
     fetchUsersAndGroups();
     fetchEvaluators();
-  }, [fetchSettingsAndYears, fetchUsersAndGroups, fetchEvaluators]);
+  }, [fetchSettingsAndYears, fetchUsersAndGroups, fetchEvaluators, auth.loggedIn, auth.jwtToken]);
 
   const setAcademicYear = useCallback((year: string) => {
     setSelectedAcademicYear(year);

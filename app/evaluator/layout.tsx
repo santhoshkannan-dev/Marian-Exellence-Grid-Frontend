@@ -8,7 +8,7 @@ import { useApp } from '@/context/AppContext';
 export default function EvaluatorLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loggedIn, logout, selectedAcademicYear, isInitialized, isClassTeacher, isEvaluator, switchRole } = useApp();
+  const { loggedIn, logout, selectedAcademicYear, isInitialized, isClassTeacher, isEvaluator, currentUserInfo, switchRole } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -188,7 +188,7 @@ export default function EvaluatorLayout({ children }: { children: React.ReactNod
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            {isClassTeacher && (
+            {(isClassTeacher || currentUserInfo?.available_roles?.includes('class_teacher') || currentUserInfo?.is_class_teacher || currentUserInfo?.role === 'faculty') && (
               <button
                 id="role-switch-to-teacher-btn"
                 className="role-switcher-btn"

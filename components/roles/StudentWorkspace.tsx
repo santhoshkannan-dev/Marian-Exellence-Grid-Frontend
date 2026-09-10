@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useApp } from '@/context/AppContext';
+import { useApp, parseStudentEmail } from '@/context/AppContext';
 import { Submission, CriteriaItem } from '@/data/initialData';
 import { toast } from 'react-toastify';
 import { CustomModal } from '@/components/CustomModal';
@@ -718,9 +718,11 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
 
   // Determine current logged in Student Representative's class
   const currentStudentObj = students.find((s) => s.id === currentStudentId);
+  const parsedRepEmail = currentEmail ? parseStudentEmail(currentEmail) : null;
   const repClass =
     (currentUserInfo as any)?.className ||
     (currentUserInfo as any)?.class_name ||
+    parsedRepEmail?.className ||
     currentStudentObj?.className ||
     'II MCA';
 
@@ -745,6 +747,8 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         u.id === sub.studentId
     );
 
+    const parsedSubEmail = subEmail ? parseStudentEmail(subEmail) : null;
+
     const studentClass =
       (sub as any).className ||
       (sub as any).class_name ||
@@ -754,9 +758,17 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       (userObj as any)?.className ||
       (userObj as any)?.class_name ||
       studentObj?.className ||
+      parsedSubEmail?.className ||
       '';
 
-    if (!studentClass || !repClass) return false;
+    const sameEmailBatch = Boolean(
+      parsedSubEmail && parsedRepEmail &&
+      parsedSubEmail.courseName === parsedRepEmail.courseName &&
+      parsedSubEmail.batchYear === parsedRepEmail.batchYear
+    );
+
+    if (sameEmailBatch) return true;
+    if (!studentClass || !repClass) return true;
     return isSameClass(studentClass, repClass);
   });
 
