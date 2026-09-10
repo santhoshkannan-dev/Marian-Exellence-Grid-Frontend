@@ -16,7 +16,11 @@ export default function LoginPage() {
   // Load Google Identity Services SDK
   useEffect(() => {
     const initGoogleSignIn = () => {
-      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '844955988511-9f9oh4sjrp3eqoimenpkdg0ho3ljr1bo.apps.googleusercontent.com';
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        console.warn('Google Client ID is not configured in NEXT_PUBLIC_GOOGLE_CLIENT_ID.');
+        return;
+      }
       if ((window as any).google && (window as any).google.accounts) {
         (window as any).google.accounts.id.initialize({
           client_id: clientId,
@@ -58,29 +62,17 @@ export default function LoginPage() {
     }
   }, []);
 
-  const handleRedirectAfterLogin = (user: any, fallbackRole?: string) => {
-    const priority = (user?.priority_role || '').toLowerCase();
-    const rawRole = (user?.role || fallbackRole || currentRole || 'student').toLowerCase();
-
-    // Priority: admin/iqac > class_teacher > evaluator > student
-    if (rawRole === 'admin' || rawRole === 'iqac' || priority === 'admin' || priority === 'iqac') {
-      router.push('/admin/academic-years');
-    } else if (priority === 'class_teacher' || (!priority && (rawRole === 'teacher' || rawRole === 'faculty'))) {
-      router.push('/teacher/dashboard');
-    } else if (priority === 'evaluator' || (!priority && (rawRole === 'evaluator' || rawRole === 'evaluation'))) {
-      router.push('/evaluator/dashboard');
-    } else {
-      router.push('/student/dashboard');
-    }
-  };
-
   const handleGoogleCredentialResponse = async (response: any) => {
     setErrorMsg('');
     setLoading(true);
     const result = await loginWithGoogleToken(response.credential);
     setLoading(false);
     if (result.success) {
-      handleRedirectAfterLogin((result as any).user);
+      const targetRole = ((result as any).user?.role || currentRole || 'student').toLowerCase();
+      if (targetRole === 'student') router.push('/student/dashboard');
+      else if (targetRole === 'teacher' || targetRole === 'faculty') router.push('/teacher/dashboard');
+      else if (targetRole === 'admin') router.push('/admin/academic-years');
+      else if (targetRole === 'evaluator' || targetRole === 'evaluation') router.push('/evaluator/dashboard');
     } else {
       setErrorMsg(result.error || 'Google Sign-In failed.');
     }
@@ -110,7 +102,11 @@ export default function LoginPage() {
     const result = await loginBypass(emailToUse, overrideRole);
     setLoading(false);
     if (result.success) {
-      handleRedirectAfterLogin((result as any).user, overrideRole);
+      const targetRole = ((result as any).user?.role || overrideRole || 'student').toLowerCase();
+      if (targetRole === 'student') router.push('/student/dashboard');
+      else if (targetRole === 'teacher' || targetRole === 'faculty') router.push('/teacher/dashboard');
+      else if (targetRole === 'admin' || targetRole === 'iqac') router.push('/admin/academic-years');
+      else if (targetRole === 'evaluator' || targetRole === 'evaluation') router.push('/evaluator/dashboard');
     } else {
       setErrorMsg(result.error || 'Bypass authentication failed.');
     }
@@ -188,9 +184,10 @@ export default function LoginPage() {
                     <option value="santhosh.25pmc152@mariancollege.org">Student/DQC Rep (santhosh.25pmc152 - II MCA)</option>
                     <option value="amal.25pmc114@mariancollege.org">PG Student (amal.25pmc114 - II MCA)</option>
                     <option value="santhosh.25ubc154@mariancollege.org">UG Student (santhosh.25ubc154 - II BCA A)</option>
-                    <option value="kochumol.abraham@mariancollege.org">Class Teacher (Kochumol Abraham)</option>
+                    <option value="kochumol.abraham@mariancollege.org">Class Teacher / Faculty (Kochumol Abraham)</option>
                     <option value="allen.george@mariancollege.org">Evaluator (Allen George)</option>
-                    <option value="admin@mariancollege.org">Admin</option>
+                    <option value="iqac@mariancollege.org">IQAC Coordinator (iqac@mariancollege.org)</option>
+                    <option value="admin@mariancollege.org">Institutional Admin (admin@mariancollege.org)</option>
                   </select>
                 </div>
               </div>

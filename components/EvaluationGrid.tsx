@@ -75,17 +75,9 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ onViewDetails })
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                  <span style={{ fontSize: '0.9rem' }}>👤</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Evaluator</div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '170px' }}>
-                      {c.evaluator.name}
-                    </div>
-                  </div>
-                </div>
+                <span style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-muted)' }}>Interactive Metrics</span>
                 <span
-                  style={{ fontSize: '0.82rem', fontWeight: 800, color: '#4f46e5', cursor: 'pointer', flexShrink: 0 }}
+                  style={{ fontSize: '0.82rem', fontWeight: 800, color: '#4f46e5', cursor: 'pointer' }}
                   onClick={() => {
                     if (onViewDetails) onViewDetails(c);
                   }}

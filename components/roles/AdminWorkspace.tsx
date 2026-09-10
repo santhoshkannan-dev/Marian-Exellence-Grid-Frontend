@@ -174,6 +174,7 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({ view }) => {
   // ----------------------------------------------------
   // DATASET 2: CRITERIA MANAGEMENT
   // ----------------------------------------------------
+  const [selectedYear, setSelectedYear] = useState('2025-2026');
 
   // Criteria Items detailed view states
   const [selectedCategory, setSelectedCategory] = useState<any | null>(null);
@@ -1090,6 +1091,15 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({ view }) => {
                     <p className="muted" style={{ fontSize: '0.88rem' }}>Manage and organize evaluation criteria hierarchies.</p>
                   </div>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <select
+                      className="select"
+                      style={{ width: '150px' }}
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(e.target.value)}
+                    >
+                      <option value="2025-2026">2025-2026</option>
+                      <option value="2024-2025">2024-2025</option>
+                    </select>
                     <button
                       className="btn"
                       style={{ background: '#f97316', color: '#ffffff', fontWeight: 700 }}
