@@ -56,7 +56,8 @@ export const Footer: React.FC = () => {
           <div className="footer-dev-info">
             <span className="footer-author">MCA 2025</span><br />
             Santhosh Kannan<br />
-            Amal Thomas
+            Amal Thomas<br />
+            Vivek Menon
           </div>
         </div>
       </div>
