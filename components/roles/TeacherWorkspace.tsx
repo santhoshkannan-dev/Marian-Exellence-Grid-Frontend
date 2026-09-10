@@ -126,30 +126,10 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     (c.classTeacher && currentUserInfo?.email && c.classTeacher.toLowerCase() === currentUserInfo.email.toLowerCase()) ||
     (c.classTeacherEmail && currentUserInfo?.email && c.classTeacherEmail.toLowerCase() === currentUserInfo.email.toLowerCase())
   );
-  const rawClass = (currentUserInfo as any)?.assigned_class_name || (currentUserInfo as any)?.class_name_display || (currentUserInfo as any)?.className || (currentUserInfo as any)?.class_name || classByTeacherEmail?.name;
-
-  const [selectedClassOverride, setSelectedClassOverride] = useState<string>('');
-
-  const deptClasses = React.useMemo(() => {
-    if (!classes || classes.length === 0) return [];
-    const deptName = (currentUserInfo?.department || '').toLowerCase().trim();
-    const deptCode = (currentUserInfo?.department_code || '').toLowerCase().trim();
-    if (!deptName && !deptCode) return classes;
-    return classes.filter((c: any) => {
-      const cDept = (c.department || '').toLowerCase().trim();
-      const cDeptCode = (c.department_code || '').toLowerCase().trim();
-      return (deptName && cDept.includes(deptName)) || (deptCode && (cDeptCode === deptCode || cDept.includes(deptCode)));
-    });
-  }, [classes, currentUserInfo]);
-
-  // teacherClass resolves with fallback:
-  // 1. Direct class assignment
-  // 2. User selection override
-  // 3. Department primary class fallback
-  const directTeacherClass = (typeof rawClass === 'string' && isNaN(Number(rawClass)) && rawClass) ? rawClass : (classByTeacherEmail?.name || null);
-  const teacherClass: string | null = directTeacherClass || selectedClassOverride || (deptClasses.length > 0 ? deptClasses[0].name : (classes && classes.length > 0 ? classes[0].name : null));
-  const teacherClassObject = teacherClass ? (classes?.find((c: any) => c.name === teacherClass) || classByTeacherEmail) : null;
-  const teacherDepartment = teacherClassObject?.department || currentUserInfo?.department || '';
+  const rawClass = (currentUserInfo as any)?.class_name_display || (currentUserInfo as any)?.className || (currentUserInfo as any)?.class_name || classByTeacherEmail?.name;
+  const teacherClass = (typeof rawClass === 'string' && isNaN(Number(rawClass))) ? rawClass : (classByTeacherEmail?.name || 'II MCA');
+  const teacherClassObject = classes?.find((c: any) => c.name === teacherClass) || classByTeacherEmail;
+  const teacherDepartment = teacherClassObject?.department || currentUserInfo?.department || 'The Post-Graduate Department of Computer Applications';
 
   // Base list of students belonging to this teacher's class
   const realStudents = users.filter(u => u.role === 'student').map(u => ({
@@ -640,37 +620,6 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     (studentManagementPage - 1) * studentPageSize,
     studentManagementPage * studentPageSize
   );
-
-  // Guard: teacher not yet assigned to any class and no fallback classes found
-  if (!teacherClass) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '18px', textAlign: 'center', padding: '40px' }}>
-        <div style={{ fontSize: '3.5rem' }}>🏫</div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Select or Assign Class</h2>
-        <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', maxWidth: '440px', lineHeight: 1.6 }}>
-          You are logged in as a Faculty member. Select a class below to review and verify student submissions:
-        </p>
-        {classes && classes.length > 0 && (
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '10px' }}>
-            <select
-              value={selectedClassOverride}
-              onChange={(e) => setSelectedClassOverride(e.target.value)}
-              className="select"
-              style={{ minWidth: '220px', padding: '10px 14px', borderRadius: '10px', fontWeight: 600 }}
-            >
-              <option value="">-- Choose Class --</option>
-              {classes.map((c: any) => (
-                <option key={c.id} value={c.name}>{c.name} ({c.department || 'Department'})</option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div style={{ padding: '12px 24px', background: 'rgba(99,102,241,0.08)', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.2)', fontSize: '0.85rem', color: '#4f46e5', fontWeight: 600 }}>
-          📧 {currentUserInfo?.email || 'Your email'}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={{ position: 'relative', minHeight: '85vh' }}>

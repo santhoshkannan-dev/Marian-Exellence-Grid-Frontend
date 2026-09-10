@@ -29,18 +29,7 @@ export function DepartmentHierarchyManager() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Smallest class size state for moderation settings
-  const [localSmallestClassSize, setLocalSmallestClassSize] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('bc_smallest_class_size');
-      if (saved !== null && saved !== '') {
-        const parsed = parseFloat(saved);
-        if (!isNaN(parsed)) return parsed;
-      }
-    }
-    return smallestClassSize;
-  });
-  const [isSavingN, setIsSavingN] = useState(false);
-
+  const [localSmallestClassSize, setLocalSmallestClassSize] = useState<number>(smallestClassSize);
   React.useEffect(() => {
     setLocalSmallestClassSize(smallestClassSize);
   }, [smallestClassSize]);
@@ -117,44 +106,17 @@ export function DepartmentHierarchyManager() {
     [userGroups]
   );
 
-  // Only emails present in the Class Teachers Council group are eligible for class teacher allocation
   const availableFaculty = useMemo(() => {
-    const councilEmails = new Set(
-      (classTeachersGroup?.emails || []).map((e) => e.toLowerCase().trim())
-    );
-    if (councilEmails.size === 0) {
-      // Fallback: show all teacher/faculty users sorted alphabetically if council is empty
-      return users
-        .filter((u) => u.role === 'teacher' || u.role === 'faculty')
-        .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
-    }
-    // Filter to only Class Teachers Council members and sort alphabetically
     return users
-      .filter((u) => councilEmails.has(u.email.toLowerCase().trim()))
-      .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+      .filter((u) => u.role === 'teacher' || u.role === 'faculty')
+      .sort((a, b) => {
+        const aInGroup = classTeachersGroup?.emails.some((e) => e.toLowerCase().trim() === a.email.toLowerCase().trim());
+        const bInGroup = classTeachersGroup?.emails.some((e) => e.toLowerCase().trim() === b.email.toLowerCase().trim());
+        if (aInGroup && !bInGroup) return -1;
+        if (!aInGroup && bInGroup) return 1;
+        return (a.name || a.email).localeCompare(b.name || b.email);
+      });
   }, [users, classTeachersGroup]);
-
-  // Helper to get faculty available for a specific class (excludes faculty assigned to other classes)
-  const getSelectableFacultyForClass = (excludeClassId?: number, currentAdvisorEmail?: string) => {
-    const assignedEmails = new Set<string>();
-    (classes || []).forEach((c: any) => {
-      if (excludeClassId && c.id === excludeClassId) return;
-      const pending = classEdits[c.id]?.classTeacher;
-      const email = (pending !== undefined ? pending : (c.classTeacher || c.class_teacher_email || c.class_teacher?.email || '')).trim().toLowerCase();
-      if (email) {
-        assignedEmails.add(email);
-      }
-    });
-
-    const currentEmail = (currentAdvisorEmail || '').trim().toLowerCase();
-    return availableFaculty.filter((f) => {
-      const fEmail = (f.email || '').trim().toLowerCase();
-      // Always allow the currently assigned advisor for this class
-      if (currentEmail && fEmail === currentEmail) return true;
-      // Exclude if already assigned to another class
-      return !assignedEmails.has(fEmail);
-    });
-  };
 
   // Toggle accordions
   const toggleDept = (deptId: number) => {
@@ -234,7 +196,6 @@ export function DepartmentHierarchyManager() {
   };
 
   const openEditClass = (cls: any) => {
-    const classDept = departments.find((d) => d.name === cls.department || d.code === cls.department_code);
     setClassForm({
       course_id: cls.course || 0,
       year_number: cls.year_number || 1,
@@ -243,7 +204,7 @@ export function DepartmentHierarchyManager() {
       num_students: cls.num_students || 0,
       negative_points: cls.negative_points || 0,
     });
-    setClassModal({ isOpen: true, mode: 'edit', cls, deptId: classDept?.id });
+    setClassModal({ isOpen: true, mode: 'edit', cls });
   };
 
   // Submission handlers
@@ -354,8 +315,6 @@ export function DepartmentHierarchyManager() {
     } else if (classModal.cls) {
       const res = await updateClass(classModal.cls.id, {
         name: generatedName,
-        course_id: classForm.course_id || undefined,
-        course: classForm.course_id || undefined,
         year_number: Number(classForm.year_number),
         section: classForm.section.trim().toUpperCase(),
         classTeacher: classForm.classTeacher,
@@ -401,202 +360,6 @@ export function DepartmentHierarchyManager() {
 
   // Helper for Roman numerals
   const getRoman = (num: number) => ['', 'I', 'II', 'III', 'IV', 'V', 'VI'][num] || String(num);
-
-  const renderClassCard = (cls: any) => {
-    const edits = classEdits[cls.id] || {};
-    const currentN = edits.num_students !== undefined ? edits.num_students : (cls.num_students ?? 50);
-    const currentP = Math.max(0, Math.abs(edits.negative_points !== undefined ? edits.negative_points : (cls.negative_points ?? 0)));
-    const currentAdvisor = edits.classTeacher !== undefined ? edits.classTeacher : (cls.classTeacher || cls.class_teacher_email || '');
-    const hasPendingEdits =
-      edits.num_students !== undefined ||
-      edits.negative_points !== undefined ||
-      edits.classTeacher !== undefined;
-
-    return (
-      <div
-        key={cls.id}
-        style={{
-          padding: '12px 16px',
-          borderRadius: '8px',
-          border: '1px solid #e2e8f0',
-          background: '#ffffff',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a' }}>
-              {cls.name}
-            </span>
-            {cls.year_number && (
-              <span
-                style={{
-                  padding: '1px 6px',
-                  borderRadius: '4px',
-                  fontSize: '0.68rem',
-                  fontWeight: 700,
-                  background: '#e0e7ff',
-                  color: '#3730a3',
-                }}
-              >
-                Year {getRoman(cls.year_number)}
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button
-              className="btn btn-sm btn-secondary"
-              style={{ fontSize: '0.72rem', padding: '3px 8px' }}
-              onClick={() => openEditClass(cls)}
-            >
-              Edit Details
-            </button>
-            <button
-              className="btn btn-sm"
-              style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', fontSize: '0.72rem', padding: '3px 8px' }}
-              onClick={() =>
-                setDeleteConfirm({
-                  type: 'class',
-                  id: cls.id,
-                  name: cls.name,
-                })
-              }
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-
-        {/* Class Advisor and Moderation Controls */}
-        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          {/* Faculty Advisor select */}
-          <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b' }}>
-              CLASS ADVISOR (FACULTY)
-            </label>
-            <select
-              className="select"
-              value={currentAdvisor}
-              onChange={(e) =>
-                setClassEdits((prev) => ({
-                  ...prev,
-                  [cls.id]: { ...prev[cls.id], classTeacher: e.target.value },
-                }))
-              }
-              style={{
-                padding: '6px 10px',
-                fontSize: '0.82rem',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                background: '#ffffff',
-              }}
-            >
-              <option value="">Select Faculty Advisor</option>
-              {(() => {
-                const selectableFaculty = getSelectableFacultyForClass(cls.id, currentAdvisor);
-                if (selectableFaculty.length === 0) {
-                  return <option value="" disabled>All council teachers already allocated</option>;
-                }
-                return selectableFaculty.map((f) => (
-                  <option key={f.id || f.email} value={f.email}>
-                    ⭐ {f.name} ({f.email})
-                  </option>
-                ));
-              })()}
-            </select>
-          </div>
-
-          {/* Students N */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#7c3aed' }}>
-              N — STUDENTS
-            </label>
-            <input
-              type="number"
-              min={0}
-              value={currentN}
-              onChange={(e) =>
-                setClassEdits((prev) => ({
-                  ...prev,
-                  [cls.id]: { ...prev[cls.id], num_students: Number(e.target.value) },
-                }))
-              }
-              style={{
-                width: '80px',
-                padding: '6px 8px',
-                fontSize: '0.82rem',
-                borderRadius: '6px',
-                border: '1px solid #c4b5fd',
-                background: '#faf5ff',
-                color: '#4c1d95',
-                fontWeight: 700,
-              }}
-            />
-          </div>
-
-          {/* Penalty Points P */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#dc2626' }}>
-              P — PENALTY
-            </label>
-            <input
-              type="number"
-              min={0}
-              step={0.1}
-              value={currentP}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Math.max(0, Math.abs(Number(e.target.value)));
-                setClassEdits((prev) => ({
-                  ...prev,
-                  [cls.id]: { ...prev[cls.id], negative_points: val },
-                }));
-              }}
-              style={{
-                width: '80px',
-                padding: '6px 8px',
-                fontSize: '0.82rem',
-                borderRadius: '6px',
-                border: '1px solid #fca5a5',
-                background: '#fff1f2',
-                color: '#991b1b',
-                fontWeight: 700,
-              }}
-            />
-          </div>
-
-          {/* Save button if pending edits */}
-          {hasPendingEdits && (
-            <button
-              className="btn btn-sm"
-              style={{ background: '#7c3aed', color: '#fff', fontWeight: 700, padding: '6px 12px' }}
-              onClick={async () => {
-                const res = await updateClass(cls.id, {
-                  classTeacher: currentAdvisor,
-                  num_students: currentN,
-                  negative_points: currentP,
-                });
-                if (res.success) {
-                  showStatus(`Class "${cls.name}" updated.`);
-                  setClassEdits((prev) => {
-                    const next = { ...prev };
-                    delete next[cls.id];
-                    return next;
-                  });
-                } else {
-                  showStatus(res.error || 'Failed to update class', 'error');
-                }
-              }}
-            >
-              Save
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -686,38 +449,19 @@ export function DepartmentHierarchyManager() {
               type="number"
               min={0}
               value={localSmallestClassSize}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
-                setLocalSmallestClassSize(isNaN(val) ? 0 : val);
-              }}
+              onChange={(e) => setLocalSmallestClassSize(Number(e.target.value))}
               className="input"
               style={{ width: '90px', padding: '6px 10px', fontSize: '0.85rem' }}
             />
             <button
               className="btn btn-sm"
-              disabled={isSavingN}
-              style={{
-                background: '#4F46E5',
-                color: '#fff',
-                fontWeight: 700,
-                padding: '6px 14px',
-                opacity: isSavingN ? 0.7 : 1,
-                cursor: isSavingN ? 'not-allowed' : 'pointer'
-              }}
-              onClick={async () => {
-                setIsSavingN(true);
-                try {
-                  const valToSave = Math.max(0, Number(localSmallestClassSize) || 0);
-                  await updateSmallestClassSize(valToSave);
-                  showStatus(`Global smallest class size set to ${valToSave}`);
-                } catch (err: any) {
-                  showStatus(err?.message || 'Failed to save smallest class size', 'error');
-                } finally {
-                  setIsSavingN(false);
-                }
+              style={{ background: '#4F46E5', color: '#fff', fontWeight: 700, padding: '6px 14px' }}
+              onClick={() => {
+                updateSmallestClassSize(localSmallestClassSize);
+                showStatus(`Global smallest class size set to ${localSmallestClassSize}`);
               }}
             >
-              {isSavingN ? 'Saving...' : 'Save n'}
+              Save n
             </button>
           </div>
         </div>
@@ -968,25 +712,7 @@ export function DepartmentHierarchyManager() {
                     ) : (
                       deptCourses.map((course) => {
                         const isCourseExpanded = !!expandedCourses[course.id];
-                        const courseClasses = classes
-                          .filter((cls) => {
-                            if (cls.course === course.id) return true;
-                            if (!cls.course) {
-                              const belongsToDept =
-                                (cls.department && cls.department.toLowerCase() === dept.name.toLowerCase()) ||
-                                (cls.department_code && cls.department_code.toLowerCase() === dept.code.toLowerCase());
-                              if (belongsToDept) {
-                                const nameParts = (cls.name || '').toUpperCase().split(/[\s_-]+/);
-                                const abbr = (course.abbreviation || '').toUpperCase();
-                                const code = (course.email_code || '').toUpperCase();
-                                if ((abbr && nameParts.includes(abbr)) || (code && nameParts.includes(code))) {
-                                  return true;
-                                }
-                              }
-                            }
-                            return false;
-                          })
-                          .sort((a, b) => (a.year_number || 0) - (b.year_number || 0) || a.name.localeCompare(b.name));
+                        const courseClasses = classes.filter((cls) => cls.course === course.id);
 
                         return (
                           <div
@@ -1123,7 +849,199 @@ export function DepartmentHierarchyManager() {
                                     </button>
                                   </div>
                                 ) : (
-                                  courseClasses.map((cls) => renderClassCard(cls))
+                                  courseClasses.map((cls) => {
+                                    const edits = classEdits[cls.id] || {};
+                                    const currentN = edits.num_students !== undefined ? edits.num_students : (cls.num_students ?? 50);
+                                    const currentP = Math.max(0, Math.abs(edits.negative_points !== undefined ? edits.negative_points : (cls.negative_points ?? 0)));
+                                    const currentAdvisor = edits.classTeacher !== undefined ? edits.classTeacher : (cls.classTeacher || cls.class_teacher_email || '');
+                                    const hasPendingEdits =
+                                      edits.num_students !== undefined ||
+                                      edits.negative_points !== undefined ||
+                                      edits.classTeacher !== undefined;
+
+                                    return (
+                                      <div
+                                        key={cls.id}
+                                        style={{
+                                          padding: '12px 16px',
+                                          borderRadius: '8px',
+                                          border: '1px solid #e2e8f0',
+                                          background: '#ffffff',
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          gap: '10px',
+                                        }}
+                                      >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a' }}>
+                                              {cls.name}
+                                            </span>
+                                            {cls.year_number && (
+                                              <span
+                                                style={{
+                                                  padding: '1px 6px',
+                                                  borderRadius: '4px',
+                                                  fontSize: '0.68rem',
+                                                  fontWeight: 700,
+                                                  background: '#e0e7ff',
+                                                  color: '#3730a3',
+                                                }}
+                                              >
+                                                Year {getRoman(cls.year_number)}
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <div style={{ display: 'flex', gap: '6px' }}>
+                                            <button
+                                              className="btn btn-sm btn-secondary"
+                                              style={{ fontSize: '0.72rem', padding: '3px 8px' }}
+                                              onClick={() => openEditClass(cls)}
+                                            >
+                                              Edit Details
+                                            </button>
+                                            <button
+                                              className="btn btn-sm"
+                                              style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', fontSize: '0.72rem', padding: '3px 8px' }}
+                                              onClick={() =>
+                                                setDeleteConfirm({
+                                                  type: 'class',
+                                                  id: cls.id,
+                                                  name: cls.name,
+                                                })
+                                              }
+                                            >
+                                              Delete
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {/* Class Advisor and Moderation Controls */}
+                                        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                                          {/* Faculty Advisor select */}
+                                          <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                            <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b' }}>
+                                              CLASS ADVISOR (FACULTY)
+                                            </label>
+                                            <select
+                                              value={currentAdvisor}
+                                              onChange={(e) =>
+                                                setClassEdits((prev) => ({
+                                                  ...prev,
+                                                  [cls.id]: { ...prev[cls.id], classTeacher: e.target.value },
+                                                }))
+                                              }
+                                              style={{
+                                                padding: '6px 8px',
+                                                fontSize: '0.8rem',
+                                                borderRadius: '6px',
+                                                border: '1px solid #cbd5e1',
+                                                background: '#fff',
+                                              }}
+                                            >
+                                              <option value="">Select Faculty Advisor</option>
+                                              {availableFaculty.map((f) => {
+                                                const isCouncil = classTeachersGroup?.emails.some(
+                                                  (e) => e.toLowerCase().trim() === f.email.toLowerCase().trim()
+                                                );
+                                                return (
+                                                  <option key={f.email} value={f.email}>
+                                                    {isCouncil ? '⭐ ' : ''}{f.name} ({f.email})
+                                                  </option>
+                                                );
+                                              })}
+                                            </select>
+                                          </div>
+
+                                          {/* Students N */}
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                            <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#7c3aed' }}>
+                                              N — STUDENTS
+                                            </label>
+                                            <input
+                                              type="number"
+                                              min={0}
+                                              value={currentN}
+                                              onChange={(e) =>
+                                                setClassEdits((prev) => ({
+                                                  ...prev,
+                                                  [cls.id]: { ...prev[cls.id], num_students: Number(e.target.value) },
+                                                }))
+                                              }
+                                              style={{
+                                                width: '80px',
+                                                padding: '6px 8px',
+                                                fontSize: '0.82rem',
+                                                borderRadius: '6px',
+                                                border: '1px solid #c4b5fd',
+                                                background: '#faf5ff',
+                                                color: '#4c1d95',
+                                                fontWeight: 700,
+                                              }}
+                                            />
+                                          </div>
+
+                                          {/* Penalty Points P */}
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                            <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#dc2626' }}>
+                                              P — PENALTY
+                                            </label>
+                                            <input
+                                              type="number"
+                                              min={0}
+                                              step={0.1}
+                                              value={currentP}
+                                              onChange={(e) => {
+                                                const val = e.target.value === '' ? 0 : Math.max(0, Math.abs(Number(e.target.value)));
+                                                setClassEdits((prev) => ({
+                                                  ...prev,
+                                                  [cls.id]: { ...prev[cls.id], negative_points: val },
+                                                }));
+                                              }}
+                                              style={{
+                                                width: '80px',
+                                                padding: '6px 8px',
+                                                fontSize: '0.82rem',
+                                                borderRadius: '6px',
+                                                border: '1px solid #fca5a5',
+                                                background: '#fff5f5',
+                                                color: '#7f1d1d',
+                                                fontWeight: 700,
+                                              }}
+                                            />
+                                          </div>
+
+                                          {/* Save button if pending edits */}
+                                          {hasPendingEdits && (
+                                            <button
+                                              className="btn btn-sm"
+                                              style={{ background: '#7c3aed', color: '#fff', fontWeight: 700, padding: '6px 12px' }}
+                                              onClick={async () => {
+                                                const res = await updateClass(cls.id, {
+                                                  classTeacher: currentAdvisor,
+                                                  num_students: currentN,
+                                                  negative_points: currentP,
+                                                });
+                                                if (res.success) {
+                                                  showStatus(`Class "${cls.name}" updated.`);
+                                                  setClassEdits((prev) => {
+                                                    const next = { ...prev };
+                                                    delete next[cls.id];
+                                                    return next;
+                                                  });
+                                                } else {
+                                                  showStatus(res.error || 'Failed to update class', 'error');
+                                                }
+                                              }}
+                                            >
+                                              Save
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })
                                 )}
                               </div>
                             )}
@@ -1131,67 +1049,6 @@ export function DepartmentHierarchyManager() {
                         );
                       })
                     )}
-
-                    {/* Unassigned department classes (if any class in deptClasses was not matched to any course) */}
-                    {(() => {
-                      const matchedClassIds = new Set<number>();
-                      deptCourses.forEach((c) => {
-                        classes.forEach((cls) => {
-                          if (cls.course === c.id) {
-                            matchedClassIds.add(cls.id);
-                          } else if (!cls.course) {
-                            const belongsToDept =
-                              (cls.department && cls.department.toLowerCase() === dept.name.toLowerCase()) ||
-                              (cls.department_code && cls.department_code.toLowerCase() === dept.code.toLowerCase());
-                            if (belongsToDept) {
-                              const nameParts = (cls.name || '').toUpperCase().split(/[\s_-]+/);
-                              const abbr = (c.abbreviation || '').toUpperCase();
-                              const code = (c.email_code || '').toUpperCase();
-                              if ((abbr && nameParts.includes(abbr)) || (code && nameParts.includes(code))) {
-                                matchedClassIds.add(cls.id);
-                              }
-                            }
-                          }
-                        });
-                      });
-                      const unassignedClasses = deptClasses.filter((cls) => !matchedClassIds.has(cls.id));
-                      if (unassignedClasses.length === 0) return null;
-
-                      return (
-                        <div
-                          style={{
-                            borderRadius: '10px',
-                            border: '1.5px dashed #f59e0b',
-                            background: '#fffbeb',
-                            overflow: 'hidden',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-                          }}
-                        >
-                          <div
-                            style={{
-                              padding: '12px 16px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              background: '#fef3c7',
-                              borderBottom: '1px solid #fde68a',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontWeight: 800, fontSize: '0.92rem', color: '#92400e' }}>
-                                ⚠️ Other Classes ({unassignedClasses.length})
-                              </span>
-                              <span style={{ fontSize: '0.75rem', color: '#b45309' }}>
-                                These classes belong to this department but are not assigned to a course. Click "Edit Details" to assign them.
-                              </span>
-                            </div>
-                          </div>
-                          <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {unassignedClasses.map((cls) => renderClassCard(cls))}
-                          </div>
-                        </div>
-                      );
-                    })()}
                   </div>
                 )}
               </div>
@@ -1498,27 +1355,6 @@ export function DepartmentHierarchyManager() {
                   </p>
 
                   <form onSubmit={handleSaveClass} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    <div>
-                      <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>
-                        Course *
-                      </label>
-                      <select
-                        className="input"
-                        value={classForm.course_id}
-                        onChange={(e) => setClassForm({ ...classForm, course_id: Number(e.target.value) })}
-                        disabled={classModal.mode === 'add' && !!classModal.courseId}
-                      >
-                        <option value={0}>-- Select Course --</option>
-                        {courses
-                          .filter((c) => !classModal.deptId || c.department === classModal.deptId)
-                          .map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name} ({c.abbreviation})
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       <div>
                         <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>
@@ -1590,20 +1426,16 @@ export function DepartmentHierarchyManager() {
                         onChange={(e) => setClassForm({ ...classForm, classTeacher: e.target.value })}
                       >
                         <option value="">Select Faculty Advisor (optional)</option>
-                        {(() => {
-                          const modalSelectable = getSelectableFacultyForClass(
-                            classModal.mode === 'edit' ? classModal.cls?.id : undefined,
-                            classForm.classTeacher
+                        {availableFaculty.map((f) => {
+                          const isCouncil = classTeachersGroup?.emails.some(
+                            (e) => e.toLowerCase().trim() === f.email.toLowerCase().trim()
                           );
-                          if (modalSelectable.length === 0) {
-                            return <option value="" disabled>All council teachers already allocated</option>;
-                          }
-                          return modalSelectable.map((f) => (
+                          return (
                             <option key={f.email} value={f.email}>
-                              ⭐ {f.name} ({f.email})
+                              {isCouncil ? '⭐ ' : ''}{f.name} ({f.email})
                             </option>
-                          ));
-                        })()}
+                          );
+                        })}
                       </select>
                     </div>
 

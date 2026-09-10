@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { policyCategories, PolicyCategory } from './policyData';
-import { PolicyDetailsModal } from './PolicyDetailsModal';
 
 interface PolicyCarouselProps {
   onViewDetails?: (category: PolicyCategory) => void;
@@ -10,7 +9,6 @@ interface PolicyCarouselProps {
 
 export const PolicyCarousel: React.FC<PolicyCarouselProps> = ({ onViewDetails }) => {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState<PolicyCategory | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const autoPlayTimer = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -192,59 +190,33 @@ export const PolicyCarousel: React.FC<PolicyCarouselProps> = ({ onViewDetails })
                 </p>
               </div>
 
-              {/* Card Center */}
-              <div style={{ flex: 1, margin: '12px 0', display: 'flex', flexDirection: 'column', gap: '4px', justifyContent: 'center' }}>
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.8, letterSpacing: '0.04em' }}>
+              {/* Card Center (Minimal) */}
+              <div style={{ flex: 1, margin: '20px 0', display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.75 }}>
                   {card.detailsLabel}
                 </span>
               </div>
 
-              {/* Card Bottom: Evaluator & Action */}
+              {/* Card Bottom */}
               <div
                 style={{
-                  borderTop: '1px solid rgba(255,255,255,0.2)',
-                  paddingTop: '12px',
+                  borderTop: '1px solid rgba(255,255,255,0.15)',
+                  paddingTop: '14px',
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px'
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '1.1rem' }}>👤</span>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', opacity: 0.8, fontWeight: 700, letterSpacing: '0.04em' }}>
-                      Evaluated by
-                    </div>
-                    <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {card.evaluator.name}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <span
-                    style={{
-                      fontSize: '0.86rem',
-                      fontWeight: 800,
-                      color: '#ffffff',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onViewDetails) {
-                        onViewDetails(card);
-                      } else {
-                        setSelectedCategory(card);
-                      }
-                    }}
-                  >
-                    View Details &rarr;
-                  </span>
-                </div>
+                <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', opacity: 0.7, fontWeight: 700 }}>Interactive Metrics</span>
+                <span
+                  style={{ fontSize: '0.86rem', fontWeight: 800, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onViewDetails) onViewDetails(card);
+                  }}
+                >
+                  View Details &rarr;
+                </span>
               </div>
             </div>
           );
@@ -270,13 +242,6 @@ export const PolicyCarousel: React.FC<PolicyCarouselProps> = ({ onViewDetails })
           />
         ))}
       </div>
-      {/* Policy Details Modal Popup (only rendered when used in standalone mode without parent handler) */}
-      {!onViewDetails && (
-        <PolicyDetailsModal
-          category={selectedCategory}
-          onClose={() => setSelectedCategory(null)}
-        />
-      )}
     </div>
   );
 };

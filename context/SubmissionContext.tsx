@@ -39,7 +39,7 @@ export interface SubmissionContextType {
   submissions: Submission[];
   editingSubId: number | null;
   setEditingSubId: (id: number | null) => void;
-  fetchSubmissions: (academicYear?: string) => Promise<void>;
+  fetchSubmissions: () => Promise<void>;
   addSubmission: (newSub: Omit<Submission, 'id'>, academicYear?: string, userEmail?: string) => Promise<void>;
   updateSubmission: (id: number, updates: Partial<Submission>, userEmail?: string) => Promise<void>;
   deleteSubmission: (id: number) => Promise<void>;
@@ -52,10 +52,9 @@ export const SubmissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [submissions, setSubmissions] = useState<Submission[]>(defaultSubmissions);
   const [editingSubId, setEditingSubId] = useState<number | null>(null);
 
-  const fetchSubmissions = useCallback(async (academicYear?: string) => {
+  const fetchSubmissions = useCallback(async () => {
     try {
-      const endpoint = academicYear ? `/submissions/?academicYear=${encodeURIComponent(academicYear)}` : '/submissions/';
-      const data = await apiClient.get(endpoint);
+      const data = await apiClient.get('/submissions/');
       if (Array.isArray(data)) {
         setSubmissions(data.map(normalizeSubmission));
       }

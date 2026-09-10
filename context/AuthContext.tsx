@@ -13,16 +13,7 @@ export interface CurrentUserInfo {
   department_code: string | null;
   class_name: string | null;
   picture?: string;
-  is_student_rep?: boolean;
-  isStudentRep?: boolean;
-  is_dqc_member?: boolean;
-  is_class_teacher?: boolean;
-  assigned_class_name?: string | null;
-  is_evaluator?: boolean;
-  available_roles?: string[];
-  priority_role?: string;
 }
-
 
 export const mapBackendRoleToFrontend = (backendRole: string): string => {
   if (!backendRole) return '';
@@ -124,20 +115,13 @@ export interface AuthContextType {
   currentUserInfo: CurrentUserInfo | null;
   isInitialized: boolean;
   isStudentRep: boolean;
-  isDqcMember: boolean;
-  isClassTeacher: boolean;
-  isEvaluator: boolean;
-  assignedClassName: string | null;
-  availableRoles: string[];
-  priorityRole: string;
   setRole: (role: string) => void;
   loginAsRole: (role: string) => void;
-  loginWithGoogleToken: (idToken: string) => Promise<{ success: boolean; error?: string; user?: any; priorityRole?: string }>;
+  loginWithGoogleToken: (idToken: string) => Promise<{ success: boolean; error?: string; user?: any }>;
   loginBypass: (email: string, role?: string) => Promise<{ success: boolean; error?: string; user?: any }>;
   logout: () => Promise<void>;
   updateUserProfile: (name: string, className: string) => Promise<{ success: boolean; error?: string }>;
   toggleStudentRepMode: () => void;
-  switchRole: (role: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -151,11 +135,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUserInfo, setCurrentUserInfo] = useState<CurrentUserInfo | null>(null);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [isStudentRep, setIsStudentRep] = useState<boolean>(false);
-  const [isClassTeacher, setIsClassTeacher] = useState<boolean>(false);
-  const [isEvaluator, setIsEvaluator] = useState<boolean>(false);
-  const [assignedClassName, setAssignedClassName] = useState<string | null>(null);
-  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
-  const [priorityRole, setPriorityRole] = useState<string>('');
 
   const updateCurrentUserInfo = useCallback((userData: any) => {
     let department = userData.department || null;
@@ -171,14 +150,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    const isRep = Boolean(userData.is_student_rep || userData.isStudentRep);
-    const isDqc = Boolean(userData.is_dqc_rep || userData.is_dqc_member);
-    const isTeacher = Boolean(userData.is_class_teacher);
-    const isEval = Boolean(userData.is_evaluator);
-    const assignedClass = userData.assigned_class_name || null;
-    const roles: string[] = Array.isArray(userData.available_roles) ? userData.available_roles : [];
-    const pRole: string = userData.priority_role || userData.role || '';
-
     setCurrentUserInfo({
       id: userData.id,
       email: userData.email,
@@ -188,24 +159,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       department_code: departmentCode,
       class_name: className,
       picture: userData.picture,
-      is_student_rep: isRep,
-      isStudentRep: isRep,
-      is_dqc_member: isDqc,
-      is_class_teacher: isTeacher,
-      assigned_class_name: assignedClass,
-      is_evaluator: isEval,
-      available_roles: roles,
-      priority_role: pRole,
     });
-
-    if (isRep || isDqc) setIsStudentRep(true);
-    setIsClassTeacher(isTeacher);
-    setIsEvaluator(isEval);
-    setAssignedClassName(assignedClass);
-    setAvailableRoles(roles);
-    setPriorityRole(pRole);
   }, []);
-
 
   const logout = useCallback(async () => {
     try {
@@ -223,11 +178,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUserInfo(null);
       setCurrentStudentId(1);
       setIsStudentRep(false);
-      setIsClassTeacher(false);
-      setIsEvaluator(false);
-      setAssignedClassName(null);
-      setAvailableRoles([]);
-      setPriorityRole('');
 
       apiClient.clearTokens();
       if (typeof window !== 'undefined') {
@@ -266,7 +216,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setLoggedIn(true);
               setCurrentRole(mapBackendRoleToFrontend(userData.role));
               setCurrentUserId(userData.id);
-              setIsStudentRep(Boolean(userData.is_student_rep || userData.isStudentRep));
             }
           } catch (err: any) {
             console.warn('Initial session verification failed:', err.message);
@@ -295,10 +244,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoggedIn(true);
   }, []);
 
-  const switchRole = useCallback((role: string) => {
-    setCurrentRole(role);
-  }, []);
-
   const loginWithGoogleToken = useCallback(
     async (idToken: string) => {
       try {
@@ -314,12 +259,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoggedIn(true);
         setCurrentRole(feRole);
         setCurrentUserId(data.user.id);
-        setIsStudentRep(Boolean(data.user.is_student_rep || data.user.isStudentRep));
 
         apiClient.setTokens(data.tokens.access, data.tokens.refresh);
 
         toast.success(`Logged in successfully! Welcome, ${data.user.name || data.user.first_name || 'User'}`);
-        return { success: true, user: data.user, priorityRole: data.user.priority_role };
+        return { success: true, user: data.user };
       } catch (err: any) {
         const errMsg = err.data?.error || err.message || 'Authentication failed';
         toast.error(errMsg);
@@ -343,7 +287,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoggedIn(true);
         setCurrentRole(feRole);
         setCurrentUserId(data.user.id);
-        setIsStudentRep(Boolean(data.user.is_student_rep || data.user.isStudentRep));
 
         apiClient.setTokens(data.tokens.access, data.tokens.refresh);
 
@@ -375,8 +318,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsStudentRep((prev) => !prev);
   }, []);
 
-  const isDqcMember = Boolean(currentUserInfo?.is_dqc_member);
-
   return (
     <AuthContext.Provider
       value={{
@@ -388,12 +329,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUserInfo,
         isInitialized,
         isStudentRep,
-        isDqcMember,
-        isClassTeacher,
-        isEvaluator,
-        assignedClassName,
-        availableRoles,
-        priorityRole,
         setRole,
         loginAsRole,
         loginWithGoogleToken,
@@ -401,7 +336,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         updateUserProfile,
         toggleStudentRepMode,
-        switchRole,
       }}
     >
       {children}

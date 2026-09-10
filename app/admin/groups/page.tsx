@@ -2,12 +2,10 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { isStaffEmail, isStudentEmail } from '@/data/initialData';
 import { CustomModal } from '@/components/CustomModal';
-import { toast } from 'react-toastify';
 
 export default function AdminGroupsPage() {
-  const { userGroups, users, classes, updateClass, addUserGroup, deleteUserGroup, addUserToGroup, removeUserFromGroup } = useApp();
+  const { userGroups, users, addUserGroup, deleteUserGroup, addUserToGroup, removeUserFromGroup } = useApp();
   const [deleteGroupModal, setDeleteGroupModal] = useState<{ id: string; name: string } | null>(null);
 
   // Create Group State
@@ -32,7 +30,7 @@ export default function AdminGroupsPage() {
     setNewGroupDesc('');
   };
 
-  const handleAddEmail = async (groupId: string, e: React.FormEvent) => {
+  const handleAddEmail = (groupId: string, e: React.FormEvent) => {
     e.preventDefault();
     const emailToAdd = emailInputs[groupId]?.trim().toLowerCase();
 
@@ -46,49 +44,12 @@ export default function AdminGroupsPage() {
       return;
     }
 
-    const targetGroup = userGroups.find((g) => g.id === groupId);
-    const isClassTeachersCouncil = targetGroup && (targetGroup.id === 'grp-class-teachers' || targetGroup.name.toLowerCase().includes('class teacher'));
-    if (isClassTeachersCouncil && !isStaffEmail(emailToAdd)) {
-      setStatusMsgs((prev) => ({
-        ...prev,
-        [groupId]: {
-          type: 'error',
-          msg: 'Class Teachers Council only permits staff emails in name.name@mariancollege.org format (e.g. allen.george@mariancollege.org). Student emails are not allowed.'
-        }
-      }));
-      return;
-    }
-
-    const isDqcGroup = targetGroup && (targetGroup.id === 'grp-dqc-student-rep' || targetGroup.name.toLowerCase().includes('dqc'));
-    if (isDqcGroup && !isStudentEmail(emailToAdd)) {
-      setStatusMsgs((prev) => ({
-        ...prev,
-        [groupId]: {
-          type: 'error',
-          msg: 'DQC Student Rep Group only permits student emails in name.startingwithnumber@mariancollege.org format (e.g. amal.25pmc114@mariancollege.org). Staff emails are not allowed.'
-        }
-      }));
-      return;
-    }
-
-    const isStudentRepsCouncil = targetGroup && (targetGroup.id === 'grp-student-reps' || targetGroup.name.toLowerCase().includes('student rep'));
-    if (isStudentRepsCouncil && !isStudentEmail(emailToAdd)) {
-      setStatusMsgs((prev) => ({
-        ...prev,
-        [groupId]: {
-          type: 'error',
-          msg: 'Student Representatives only permits student emails in name.startingwithnumber@mariancollege.org format (e.g. santhosh.25pmc152@mariancollege.org).'
-        }
-      }));
-      return;
-    }
-
     const success = addUserToGroup(groupId, emailToAdd);
     if (success) {
       setStatusMsgs((prev) => ({ ...prev, [groupId]: { type: 'success', msg: `Added ${emailToAdd} to group!` } }));
       setEmailInputs((prev) => ({ ...prev, [groupId]: '' }));
     } else {
-      setStatusMsgs((prev) => ({ ...prev, [groupId]: { type: 'error', msg: 'Email is already in this group or could not be added.' } }));
+      setStatusMsgs((prev) => ({ ...prev, [groupId]: { type: 'error', msg: 'Email is already in this group.' } }));
     }
   };
 
@@ -124,7 +85,7 @@ export default function AdminGroupsPage() {
             <input
               type="text"
               className="input"
-              placeholder="e.g. Activity Verification Council"
+              placeholder="e.g. DQC Evaluation Panel"
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               required
@@ -203,13 +164,7 @@ export default function AdminGroupsPage() {
                       type="email"
                       className="input"
                       style={{ fontSize: '0.85rem', height: '38px', flex: 1 }}
-                      placeholder={
-                        (group.id === 'grp-dqc-student-rep' || group.id === 'grp-student-reps' || group.name.toLowerCase().includes('dqc') || group.name.toLowerCase().includes('student rep'))
-                          ? 'e.g. amal.25pmc114@mariancollege.org'
-                          : (group.id === 'grp-class-teachers' || group.name.toLowerCase().includes('class teacher'))
-                          ? 'e.g. allen.george@mariancollege.org'
-                          : 'e.g. user@mariancollege.org'
-                      }
+                      placeholder="e.g. user@mariancollege.org"
                       value={emailInputs[group.id] || ''}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -222,12 +177,7 @@ export default function AdminGroupsPage() {
 
                     {/* Quick suggestion dropdown list of existing users */}
                     <datalist id={`user-suggestions-${group.id}`}>
-                      {(group.id === 'grp-class-teachers' || group.name.toLowerCase().includes('class teacher')
-                        ? users.filter((u) => isStaffEmail(u.email) || u.role === 'teacher' || u.role === 'faculty')
-                        : (group.id === 'grp-dqc-student-rep' || group.id === 'grp-student-reps' || group.name.toLowerCase().includes('dqc') || group.name.toLowerCase().includes('student rep'))
-                        ? users.filter((u) => isStudentEmail(u.email) || u.role === 'student')
-                        : users
-                      ).map((u) => (
+                      {users.map((u) => (
                         <option key={u.id} value={u.email}>{u.name} ({u.role})</option>
                       ))}
                     </datalist>
@@ -245,51 +195,11 @@ export default function AdminGroupsPage() {
                   <div style={{ marginTop: '10px' }}>
                     <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>Quick Add Registered Users:</span>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-                      {(group.id === 'grp-class-teachers' || group.name.toLowerCase().includes('class teacher')
-                        ? users.filter((u) => isStaffEmail(u.email) || u.role === 'teacher' || u.role === 'faculty')
-                        : (group.id === 'grp-dqc-student-rep' || group.id === 'grp-student-reps' || group.name.toLowerCase().includes('dqc') || group.name.toLowerCase().includes('student rep'))
-                        ? users.filter((u) => isStudentEmail(u.email) || u.role === 'student')
-                        : users
-                      ).slice(0, 5).map((u) => (
+                      {users.slice(0, 5).map((u) => (
                         <button
                           key={u.id}
                           type="button"
-                          onClick={async () => {
-                            const isCouncil = group.id === 'grp-class-teachers' || group.name.toLowerCase().includes('class teacher');
-                            if (isCouncil && !isStaffEmail(u.email)) {
-                              setStatusMsgs((prev) => ({
-                                ...prev,
-                                [group.id]: {
-                                  type: 'error',
-                                  msg: 'Class Teachers Council only permits staff emails in name.name@mariancollege.org format (e.g. allen.george@mariancollege.org).'
-                                }
-                              }));
-                              return;
-                            }
-                            const isDqc = group.id === 'grp-dqc-student-rep' || group.name.toLowerCase().includes('dqc');
-                            if (isDqc && !isStudentEmail(u.email)) {
-                              setStatusMsgs((prev) => ({
-                                ...prev,
-                                [group.id]: {
-                                  type: 'error',
-                                  msg: 'DQC Student Rep Group only permits student emails in name.startingwithnumber@mariancollege.org format (e.g. amal.25pmc114@mariancollege.org). Staff emails are not allowed.'
-                                }
-                              }));
-                              return;
-                            }
-                            const isRep = group.id === 'grp-student-reps' || group.name.toLowerCase().includes('student rep');
-                            if (isRep && !isStudentEmail(u.email)) {
-                              setStatusMsgs((prev) => ({
-                                ...prev,
-                                [group.id]: {
-                                  type: 'error',
-                                  msg: 'Student Representatives only permits student emails in name.startingwithnumber@mariancollege.org format.'
-                                }
-                              }));
-                              return;
-                            }
-                            await addUserToGroup(group.id, u.email);
-                          }}
+                          onClick={() => addUserToGroup(group.id, u.email)}
                           style={{
                             padding: '3px 8px',
                             background: '#ffffff',
@@ -329,127 +239,41 @@ export default function AdminGroupsPage() {
 
                   {group.emails.length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '160px', overflowY: 'auto', padding: '4px 0' }}>
-                      {group.emails.map((email) => {
-                        const isCouncil = group.id === 'grp-class-teachers' || group.name.toLowerCase().includes('class teacher');
-                        const isDqc = group.id === 'grp-dqc-student-rep' || group.name.toLowerCase().includes('dqc');
-                        const assignedTeacherClass = isCouncil
-                          ? classes?.find((c: any) => {
-                              const tEmail = (c.classTeacher || c.class_teacher_email || c.class_teacher?.email || '').trim().toLowerCase();
-                              return tEmail === email.trim().toLowerCase();
-                            })
-                          : null;
-                        const assignedDqcClass = isDqc
-                          ? classes?.find((c: any) => {
-                              const dEmail = (c.dqcMember || c.dqc_member_email || c.dqc_member?.email || '').trim().toLowerCase();
-                              return dEmail === email.trim().toLowerCase();
-                            })
-                          : null;
-
-                        return (
-                          <div
-                            key={email}
+                      {group.emails.map((email) => (
+                        <div
+                          key={email}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px',
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '16px',
+                            fontSize: '0.78rem',
+                            color: '#1e40af',
+                            fontWeight: 600
+                          }}
+                        >
+                          <span>{email}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeUserFromGroup(group.id, email)}
                             style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '4px 10px',
-                              background: '#eff6ff',
-                              border: '1px solid #bfdbfe',
-                              borderRadius: '16px',
-                              fontSize: '0.78rem',
-                              color: '#1e40af',
-                              fontWeight: 600
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#ef4444',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              padding: '0 2px',
+                              lineHeight: 1
                             }}
+                            title={`Remove ${email} from group`}
                           >
-                            <span>{email}</span>
-                            {isCouncil && (
-                              <select
-                                id={`assign-class-${email.replace(/[^a-zA-Z0-9]/g, '-')}`}
-                                value={assignedTeacherClass ? String(assignedTeacherClass.id) : ''}
-                                onChange={async (e) => {
-                                  const selectedClassId = e.target.value;
-                                  try {
-                                    if (!selectedClassId) {
-                                      if (assignedTeacherClass) {
-                                        const res = await updateClass(assignedTeacherClass.id, { classTeacher: '' });
-                                        if (res && res.success !== false) {
-                                          toast.success(`Unassigned ${email} from ${assignedTeacherClass.name}`);
-                                        } else {
-                                          toast.error(res?.error || 'Failed to unassign class');
-                                        }
-                                      }
-                                    } else {
-                                      if (assignedTeacherClass && String(assignedTeacherClass.id) !== selectedClassId) {
-                                        await updateClass(assignedTeacherClass.id, { classTeacher: '' });
-                                      }
-                                      const res = await updateClass(Number(selectedClassId), { classTeacher: email });
-                                      if (res && res.success !== false) {
-                                        const targetCls = classes.find((c: any) => String(c.id) === selectedClassId);
-                                        toast.success(`Allocated ${email} to ${targetCls?.name || 'class'}!`);
-                                      } else {
-                                        toast.error(res?.error || 'Failed to allocate class');
-                                      }
-                                    }
-                                  } catch (err: any) {
-                                    toast.error(err.message || 'Failed to update class assignment');
-                                  }
-                                }}
-                                style={{
-                                  padding: '2px 6px',
-                                  fontSize: '0.72rem',
-                                  borderRadius: '6px',
-                                  border: assignedTeacherClass ? '1px solid #86efac' : '1px solid #cbd5e1',
-                                  background: assignedTeacherClass ? '#f0fdf4' : '#ffffff',
-                                  color: assignedTeacherClass ? '#166534' : '#475569',
-                                  fontWeight: 700,
-                                  cursor: 'pointer'
-                                }}
-                                title="Allocate this council teacher to a class"
-                              >
-                                <option value="">-- Assign Class --</option>
-                                {classes?.map((c: any) => (
-                                  <option key={c.id} value={c.id}>
-                                    {c.name} {c.classTeacher && c.classTeacher.toLowerCase() !== email.toLowerCase() ? `(${c.classTeacher.split('@')[0]})` : ''}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-                            {isDqc && assignedDqcClass && (
-                              <span
-                                style={{
-                                  background: '#ede9fe',
-                                  color: '#6d28d9',
-                                  padding: '1px 6px',
-                                  borderRadius: '4px',
-                                  fontSize: '0.68rem',
-                                  fontWeight: 700
-                                }}
-                                title={`DQC Rep for ${assignedDqcClass.name}`}
-                              >
-                                ⭐ {assignedDqcClass.name}
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                await removeUserFromGroup(group.id, email);
-                              }}
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#ef4444',
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                                padding: '0 2px',
-                                lineHeight: 1
-                              }}
-                              title={`Remove ${email} from group`}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        );
-                      })}
+                            ×
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <p className="muted" style={{ fontSize: '0.82rem', fontStyle: 'italic' }}>

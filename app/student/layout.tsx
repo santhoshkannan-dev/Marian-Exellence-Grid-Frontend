@@ -8,48 +8,41 @@ import { useApp } from '@/context/AppContext';
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loggedIn, logout, selectedAcademicYear, isStudentRep, isDqcMember, toggleStudentRepMode, isInitialized, currentRole, currentUserInfo } = useApp();
+  const { loggedIn, logout, selectedAcademicYear, isStudentRep, toggleStudentRepMode, isInitialized } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Redirect to login if not authenticated, or restrict evaluators to evaluator dashboard
+  // Redirect to login if not authenticated
   React.useEffect(() => {
     if (isInitialized && !loggedIn) {
       router.push('/login');
-    } else if (
-      isInitialized &&
-      loggedIn &&
-      (currentRole === 'evaluator' || currentRole === 'evaluation' || currentUserInfo?.role === 'evaluation')
-    ) {
-      router.push('/evaluator/dashboard');
     }
-  }, [loggedIn, isInitialized, currentRole, currentUserInfo, router]);
+  }, [loggedIn, isInitialized, router]);
 
   if (!isInitialized) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
+        <p className="text-sm font-semibold text-gray-500">Verifying student credentials...</p>
+        <span className="sr-only">Loading student portal</span>
       </div>
     );
   }
 
-  if (!loggedIn || currentRole === 'evaluator' || currentRole === 'evaluation' || currentUserInfo?.role === 'evaluation') {
-    return null;
+  if (!loggedIn) {
+    return (
+      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
+        <p className="text-sm font-semibold text-gray-500">Redirecting to login portal...</p>
+      </div>
+    );
   }
-
-  const hasRepAccess = Boolean(
-    isStudentRep ||
-    isDqcMember ||
-    currentUserInfo?.is_student_rep ||
-    currentUserInfo?.is_dqc_member ||
-    currentUserInfo?.available_roles?.includes('student_rep')
-  );
 
   const studentNav = [
     { id: 'dashboard', label: 'Dashboard', href: '/student/dashboard' },
     { id: 'submit', label: 'Submit Activity', href: '/student/submit' },
     { id: 'submissions', label: 'My Submissions', href: '/student/submissions' },
-    ...(hasRepAccess
+    ...(isStudentRep
       ? [{ id: 'verification', label: 'Group Verification', href: '/student/verification' }]
       : []),
     { id: 'profile', label: 'My Profile', href: '/student/profile' },
@@ -135,7 +128,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         </div>
 
         <div className="portal-sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div className="portal-sidebar-footer-text">{isDqcMember ? 'DQC Member' : isStudentRep ? 'Student Rep' : 'Student'}</div>
+          <div className="portal-sidebar-footer-text">{isStudentRep ? 'Student Representative' : 'Student'}</div>
           <button
             className="btn btn-secondary btn-sm mobile-logout-btn"
             style={{
@@ -211,14 +204,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               style={{
                 padding: '6px 16px',
                 borderRadius: '20px',
-                background: isDqcMember ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : isStudentRep ? 'linear-gradient(135deg, #10b981, #059669)' : '#e0e7ff',
-                color: isDqcMember || isStudentRep ? '#ffffff' : '#3730a3',
+                background: isStudentRep ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : '#e0e7ff',
+                color: isStudentRep ? '#ffffff' : '#3730a3',
                 fontSize: '0.84rem',
                 fontWeight: 700,
-                boxShadow: isDqcMember ? '0 2px 8px rgba(99, 102, 241, 0.3)' : isStudentRep ? '0 2px 8px rgba(16, 185, 129, 0.3)' : 'none'
+                boxShadow: isStudentRep ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none'
               }}
             >
-              {isDqcMember ? '⭐ DQC Member' : isStudentRep ? '🏅 Student Rep' : 'Student'}
+              {isStudentRep ? '⭐ Student Rep Group Member' : 'Student'}
             </span>
 
             <button

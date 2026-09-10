@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useApp, parseStudentEmail } from '@/context/AppContext';
+import { useApp } from '@/context/AppContext';
 import { Submission, CriteriaItem } from '@/data/initialData';
 import { toast } from 'react-toastify';
 import { CustomModal } from '@/components/CustomModal';
@@ -48,8 +48,6 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     activePage,
     setActivePage,
     isStudentRep,
-    isDqcMember,
-    classes,
     currentUserInfo,
     updateUserProfile,
     editingSubId,
@@ -65,14 +63,13 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     }
   }, [activeTab]);
 
-  // Filter categories: DQC members get ALL categories; Student Reps (non-DQC) and normal students get standard categories
+  // Filter available categories based on role access (Normal Student: 10 student categories; Student Rep / DQC: All categories)
   const availableCriteriaCatalog = React.useMemo(() => {
-    if (isDqcMember) {
+    if (isStudentRep) {
       return criteriaCatalog;
     }
 
-    // Normal students and non-DQC Student Representatives get standard student categories
-    // (Academics, Documentation & Programs Organized are restricted — class-wide audit categories)
+    // Normal students get student-level categories (excluding Academics, Documentation & Programs Organized / class-wide audit categories)
     return criteriaCatalog.filter((cat) => {
       const name = String(cat.category || '').toLowerCase().trim();
       const code = String(cat.code || '').toLowerCase().trim();
@@ -96,8 +93,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
 
       return !isRestrictedForNormalStudent;
     });
-  }, [criteriaCatalog, isDqcMember]);
-
+  }, [criteriaCatalog, isStudentRep]);
 
   const { activeAcademicYear } = useApp();
 
@@ -304,9 +300,8 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     if (!isPrizesCategory || !currentItem) return [];
     const itemTitle = String(currentItem.title || '').toLowerCase().trim();
 
-    let items: string[] = [];
     if (itemTitle.includes('outside')) {
-      items = [
+      return [
         '1st Prize (Individual)',
         '2nd Prize (Individual)',
         '3rd Prize (Individual)',
@@ -316,35 +311,25 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         'Participation (Individual)',
         'Participation (Group)'
       ];
-    } else {
-      items = [
-        '1st Prize (Individual)',
-        '2nd Prize (Individual)',
-        '3rd Prize (Individual)',
-        '1st Prize (Group)',
-        '2nd Prize (Group)',
-        '3rd Prize (Group)'
-      ];
     }
 
-    if (!isDqcMember) {
-      items = items.filter((item) => !item.toLowerCase().includes('(group)'));
-    }
-    return items;
-  }, [isPrizesCategory, currentItem, isDqcMember]);
+    return [
+      '1st Prize (Individual)',
+      '2nd Prize (Individual)',
+      '3rd Prize (Individual)',
+      '1st Prize (Group)',
+      '2nd Prize (Group)',
+      '3rd Prize (Group)'
+    ];
+  }, [isPrizesCategory, currentItem]);
 
   const dynamicSubItems = React.useMemo(() => {
     if (currentItem?.rules_json?.subItems && typeof currentItem.rules_json.subItems === 'object') {
       const keys = Object.keys(currentItem.rules_json.subItems);
-      if (keys.length > 0) {
-        if (!isDqcMember && isPrizesCategory) {
-          return keys.filter((k) => !k.toLowerCase().includes('(group)') && !k.toLowerCase().includes('group'));
-        }
-        return keys;
-      }
+      if (keys.length > 0) return keys;
     }
     return [];
-  }, [currentItem, isDqcMember, isPrizesCategory]);
+  }, [currentItem]);
 
   const itemCustomFields = React.useMemo(() => {
     return currentItem?.rules_json?.fields || null;
@@ -718,20 +703,16 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
 
   // Determine current logged in Student Representative's class
   const currentStudentObj = students.find((s) => s.id === currentStudentId);
-  const parsedRepEmail = currentEmail ? parseStudentEmail(currentEmail) : null;
-  const repClass: string | null =
+  const repClass =
     (currentUserInfo as any)?.className ||
     (currentUserInfo as any)?.class_name ||
-    parsedRepEmail?.className ||
     currentStudentObj?.className ||
-    null;
+    'II MCA';
 
   // Peer Submissions for Group Verification Desk (Includes ALL users' submissions from the same class as Student Representative ONLY for verification)
   const peerSubmissions = submissions.filter((sub) => {
     // Exclude draft submissions from verification desk
     if (sub.status === 'Draft') return false;
-    // If rep's class is unknown, show all non-draft submissions so the desk isn't blank
-    if (!repClass) return true;
 
     const subEmail = (
       (sub as any).user_email ||
@@ -749,28 +730,18 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         u.id === sub.studentId
     );
 
-    const parsedSubEmail = subEmail ? parseStudentEmail(subEmail) : null;
-
-    const studentClass: string =
+    const studentClass =
       (sub as any).className ||
       (sub as any).class_name ||
       (sub as any).studentClass ||
       (sub as any).user_class ||
-      (isOwnSubmission ? ((currentUserInfo as any)?.class_name || (currentUserInfo as any)?.className) : '') ||
-      (userObj as any)?.class_name ||
+      (isOwnSubmission ? ((currentUserInfo as any)?.className || (currentUserInfo as any)?.class_name) : '') ||
       (userObj as any)?.className ||
+      (userObj as any)?.class_name ||
       studentObj?.className ||
-      parsedSubEmail?.className ||
       '';
 
-    const sameEmailBatch = Boolean(
-      parsedSubEmail && parsedRepEmail &&
-      parsedSubEmail.courseName === parsedRepEmail.courseName &&
-      parsedSubEmail.batchYear === parsedRepEmail.batchYear
-    );
-
-    if (sameEmailBatch) return true;
-    if (!studentClass || !repClass) return true;
+    if (!studentClass || !repClass) return false;
     return isSameClass(studentClass, repClass);
   });
 
