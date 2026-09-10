@@ -8,7 +8,7 @@ import { useApp } from '@/context/AppContext';
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loggedIn, logout, selectedAcademicYear, isStudentRep, toggleStudentRepMode, isInitialized } = useApp();
+  const { loggedIn, logout, selectedAcademicYear, isStudentRep, currentUserInfo, isInitialized } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -128,7 +128,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         </div>
 
         <div className="portal-sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div className="portal-sidebar-footer-text">{isStudentRep ? 'Student Representative' : 'Student'}</div>
+          <div className="portal-sidebar-footer-text">{currentUserInfo?.badge || (isStudentRep ? 'Student Rep' : 'Student')}</div>
           <button
             className="btn btn-secondary btn-sm mobile-logout-btn"
             style={{
@@ -204,14 +204,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               style={{
                 padding: '6px 16px',
                 borderRadius: '20px',
-                background: isStudentRep ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : '#e0e7ff',
-                color: isStudentRep ? '#ffffff' : '#3730a3',
+                background: (currentUserInfo?.badge || isStudentRep) ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : '#e0e7ff',
+                color: (currentUserInfo?.badge || isStudentRep) ? '#ffffff' : '#3730a3',
                 fontSize: '0.84rem',
                 fontWeight: 700,
-                boxShadow: isStudentRep ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none'
+                boxShadow: (currentUserInfo?.badge || isStudentRep) ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none'
               }}
             >
-              {isStudentRep ? '⭐ Student Rep Group Member' : 'Student'}
+              {currentUserInfo?.badge ? `⭐ ${currentUserInfo.badge}` : (isStudentRep ? '⭐ Student Rep' : 'Student')}
             </span>
 
             <button

@@ -21,13 +21,9 @@ export default function EvaluatorManagementPage() {
     setCategoryAssignments(initial);
   }, [criteriaCatalog]);
 
-  // Find evaluators from the evaluator groups
-  const evaluatorGroups = userGroups.filter(
-    (g) => g.id === 'grp-evaluation-committee' || g.id === 'grp-evaluators' || g.name.toLowerCase().includes('evaluat')
-  );
-  
-  // Get unique list of all evaluator emails
-  const allEvaluators = Array.from(new Set(evaluatorGroups.flatMap((g) => g.emails)));
+  // Find evaluators from the Evaluation Committee official group
+  const evalCommittee = userGroups.find((g) => g.id === 'grp-evaluation-committee');
+  const allEvaluators = Array.from(new Set(evalCommittee?.emails || []));
 
   const toggleCategoryForEvaluator = (evaluatorEmail: string, categoryId: string) => {
     setCategoryAssignments(prev => {

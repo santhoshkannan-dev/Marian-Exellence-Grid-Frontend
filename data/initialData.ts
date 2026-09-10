@@ -140,11 +140,23 @@ export interface Champion {
   image: string;
 }
 
+export interface UserGroupMemberDetail {
+  id?: number;
+  name: string;
+  email: string;
+  department?: string | null;
+  assigned_class?: string | null;
+  badge?: string | null;
+  categories?: string[];
+}
+
 export interface UserGroup {
   id: string;
   name: string;
   description: string;
   emails: string[];
+  policy?: 'staff_only' | 'student_only';
+  member_details?: UserGroupMemberDetail[];
 }
 
 export const defaultCriteriaCatalog: CriteriaCategory[] = [
@@ -337,27 +349,21 @@ export const defaultUserGroups: UserGroup[] = [
     emails: ["allen.george@mariancollege.org"]
   },
   {
-    id: "grp-evaluators",
-    name: "Evaluator Group",
-    description: "Evaluation team members responsible for scoring and finalizing student submissions.",
-    emails: ["allen.george@mariancollege.org"]
-  },
-  {
     id: "grp-class-teachers",
     name: "Class Teachers Council",
     description: "Faculty members acting as class advisors.",
     emails: ["kochumol.abraham@mariancollege.org"]
   },
   {
-    id: "grp-student-reps",
-    name: "Student Representatives",
-    description: "Student council and DQC lead members.",
-    emails: ["santhosh.25pmc152@mariancollege.org", "amal.25pmc114@mariancollege.org"]
-  },
-  {
     id: "grp-dqc-student-rep",
     name: "DQC Student Rep Group",
-    description: "Data Quality Cell student representatives responsible for initial verification of peer submissions.",
+    description: "Data Quality Cell student representatives responsible for initial verification of peer submissions across all categories.",
+    emails: ["santhosh.25pmc152@mariancollege.org"]
+  },
+  {
+    id: "grp-student-reps",
+    name: "Student Representatives",
+    description: "Class representatives responsible for initial verification of peer submissions of the class they belong to.",
     emails: ["santhosh.25pmc152@mariancollege.org"]
   }
 ];

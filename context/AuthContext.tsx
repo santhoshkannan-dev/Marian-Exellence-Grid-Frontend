@@ -13,6 +13,9 @@ export interface CurrentUserInfo {
   department_code: string | null;
   class_name: string | null;
   picture?: string;
+  badge?: string | null;
+  has_dual_role?: boolean;
+  available_roles?: string[];
 }
 
 export const mapBackendRoleToFrontend = (backendRole: string): string => {
@@ -150,7 +153,10 @@ export interface AuthContextType {
   currentUserInfo: CurrentUserInfo | null;
   isInitialized: boolean;
   isStudentRep: boolean;
+  hasDualRole: boolean;
+  availableRoles: string[];
   setRole: (role: string) => void;
+  switchRole: (role: 'teacher' | 'evaluator') => void;
   loginAsRole: (role: string) => void;
   loginWithGoogleToken: (idToken: string) => Promise<{ success: boolean; error?: string; user?: any }>;
   loginBypass: (email: string, role?: string) => Promise<{ success: boolean; error?: string; user?: any }>;
@@ -170,6 +176,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUserInfo, setCurrentUserInfo] = useState<CurrentUserInfo | null>(null);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [isStudentRep, setIsStudentRep] = useState<boolean>(false);
+  const [hasDualRole, setHasDualRole] = useState<boolean>(false);
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
 
   const updateCurrentUserInfo = useCallback((userData: any) => {
     let department = userData.department || null;
@@ -185,6 +193,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    const dual = Boolean(userData.has_dual_role);
+    setHasDualRole(dual);
+    setAvailableRoles(userData.available_roles || [mapBackendRoleToFrontend(userData.role)]);
+    if (userData.badge || userData.is_student_rep || userData.is_dqc_member) {
+      setIsStudentRep(true);
+    }
+
     setCurrentUserInfo({
       id: userData.id,
       email: userData.email,
@@ -194,6 +209,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       department_code: departmentCode,
       class_name: className,
       picture: userData.picture,
+      badge: userData.badge || null,
+      has_dual_role: dual,
+      available_roles: userData.available_roles || [mapBackendRoleToFrontend(userData.role)],
     });
   }, []);
 
@@ -213,6 +231,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUserInfo(null);
       setCurrentStudentId(1);
       setIsStudentRep(false);
+      setHasDualRole(false);
+      setAvailableRoles([]);
 
       apiClient.clearTokens();
       if (typeof window !== 'undefined') {
@@ -272,6 +292,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setRole = useCallback((role: string) => {
     setCurrentRole(role);
+  }, []);
+
+  const switchRole = useCallback((newRole: 'teacher' | 'evaluator') => {
+    setCurrentRole(newRole);
+    if (typeof window !== 'undefined') {
+      if (newRole === 'teacher') {
+        window.location.href = '/teacher/dashboard';
+      } else if (newRole === 'evaluator') {
+        window.location.href = '/evaluator/dashboard';
+      }
+    }
   }, []);
 
   const loginAsRole = useCallback((role: string) => {
@@ -364,7 +395,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUserInfo,
         isInitialized,
         isStudentRep,
+        hasDualRole,
+        availableRoles,
         setRole,
+        switchRole,
         loginAsRole,
         loginWithGoogleToken,
         loginBypass,

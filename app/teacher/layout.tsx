@@ -8,7 +8,7 @@ import { useApp } from '@/context/AppContext';
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loggedIn, currentRole, logout, selectedAcademicYear, isInitialized } = useApp();
+  const { loggedIn, currentRole, logout, selectedAcademicYear, isInitialized, hasDualRole, switchRole } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -17,12 +17,12 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     if (isInitialized) {
       if (!loggedIn) {
         router.push('/login');
-      } else if (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin') {
+      } else if (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin' && !hasDualRole) {
         const dest = (currentRole === 'student') ? '/student/dashboard' : '/evaluator/dashboard';
         router.push(dest);
       }
     }
-  }, [loggedIn, currentRole, isInitialized, router]);
+  }, [loggedIn, currentRole, isInitialized, hasDualRole, router]);
 
   if (!isInitialized) {
     return (
@@ -202,6 +202,31 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            {hasDualRole && (
+              <button
+                type="button"
+                onClick={() => switchRole('evaluator')}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                  color: '#ffffff',
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                  transition: 'all 0.2s ease'
+                }}
+                title="Switch to Evaluator View"
+              >
+                <span>🔄</span>
+                <span>Switch to Evaluator View</span>
+              </button>
+            )}
             <span
               style={{
                 padding: '7px 20px',

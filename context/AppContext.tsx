@@ -61,7 +61,13 @@ export interface AppContextType {
     department_code: string | null;
     class_name: string | null;
     picture?: string;
+    badge?: string | null;
+    has_dual_role?: boolean;
+    available_roles?: string[];
   } | null;
+  hasDualRole: boolean;
+  availableRoles: string[];
+  switchRole: (role: 'teacher' | 'evaluator') => void;
   setRole: (role: string) => void;
   setActivePage: (page: string) => void;
   setAcademicYear: (year: string) => void;
@@ -237,6 +243,8 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
             name: g.name,
             description: g.description || g.desc || '',
             emails: g.members || g.emails || [],
+            policy: g.policy,
+            member_details: g.member_details || [],
           }))
         );
       }
@@ -480,6 +488,9 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
       currentUserInfo: auth.currentUserInfo,
       isInitialized: auth.isInitialized,
       isStudentRep: auth.isStudentRep,
+      hasDualRole: auth.hasDualRole,
+      availableRoles: auth.availableRoles,
+      switchRole: auth.switchRole,
       setRole: auth.setRole,
       loginAsRole: auth.loginAsRole,
       loginWithGoogleToken: auth.loginWithGoogleToken,
