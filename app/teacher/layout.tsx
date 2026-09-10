@@ -8,39 +8,46 @@ import { useApp } from '@/context/AppContext';
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loggedIn, currentRole, logout, selectedAcademicYear, isInitialized } = useApp();
+  const {
+    loggedIn,
+    logout,
+    selectedAcademicYear,
+    isInitialized,
+    currentRole,
+    currentUserInfo,
+    isClassTeacher,
+    isEvaluator,
+    assignedClassName,
+    switchRole,
+  } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Redirect to login if not authenticated or unauthorized role
+  // Redirect to login if not authenticated, or restrict pure evaluators (non-class-teachers) to evaluator dashboard
   React.useEffect(() => {
-    if (isInitialized) {
-      if (!loggedIn) {
-        router.push('/login');
-      } else if (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin' && currentRole !== 'iqac') {
-        const dest = (currentRole === 'student') ? '/student/dashboard' : '/evaluator/dashboard';
-        router.push(dest);
-      }
+    if (isInitialized && !loggedIn) {
+      router.push('/login');
+    } else if (
+      isInitialized &&
+      loggedIn &&
+      !isClassTeacher &&
+      currentUserInfo?.role === 'evaluation'
+    ) {
+      // Only pure evaluators (not class teachers) should be redirected
+      router.push('/evaluator/dashboard');
     }
-  }, [loggedIn, currentRole, isInitialized, router]);
+  }, [loggedIn, isInitialized, currentUserInfo, isClassTeacher, router]);
 
   if (!isInitialized) {
     return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Verifying faculty credentials...</p>
-        <span className="sr-only">Loading teacher portal</span>
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  if (!loggedIn || (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin' && currentRole !== 'iqac')) {
-    return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Redirecting to authorized portal...</p>
-      </div>
-    );
+  if (!loggedIn || (!isClassTeacher && currentUserInfo?.role === 'evaluation')) {
+    return null;
   }
 
   const teacherNav = [
@@ -202,6 +209,37 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            {isEvaluator && (
+              <button
+                id="role-switch-to-evaluator-btn"
+                className="role-switcher-btn"
+                onClick={() => {
+                  switchRole('evaluator');
+                  router.push('/evaluator/dashboard');
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '7px 16px',
+                  borderRadius: '10px',
+                  fontSize: '0.86rem',
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Switch to Central Evaluator View"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                Switch to Evaluator
+              </button>
+            )}
             <span
               style={{
                 padding: '7px 20px',
@@ -215,7 +253,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
                 gap: '6px'
               }}
             >
-              Class Teacher
+              Class Teacher{assignedClassName ? ` • ${assignedClassName}` : ''}
             </span>
             <button
               className="btn"

@@ -126,10 +126,11 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     (c.classTeacher && currentUserInfo?.email && c.classTeacher.toLowerCase() === currentUserInfo.email.toLowerCase()) ||
     (c.classTeacherEmail && currentUserInfo?.email && c.classTeacherEmail.toLowerCase() === currentUserInfo.email.toLowerCase())
   );
-  const rawClass = (currentUserInfo as any)?.class_name_display || (currentUserInfo as any)?.className || (currentUserInfo as any)?.class_name || classByTeacherEmail?.name;
-  const teacherClass = (typeof rawClass === 'string' && isNaN(Number(rawClass))) ? rawClass : (classByTeacherEmail?.name || 'II MCA');
-  const teacherClassObject = classes?.find((c: any) => c.name === teacherClass) || classByTeacherEmail;
-  const teacherDepartment = teacherClassObject?.department || currentUserInfo?.department || 'The Post-Graduate Department of Computer Applications';
+  const rawClass = (currentUserInfo as any)?.assigned_class_name || (currentUserInfo as any)?.class_name_display || (currentUserInfo as any)?.className || (currentUserInfo as any)?.class_name || classByTeacherEmail?.name;
+  // teacherClass is null when the teacher is not assigned to any class
+  const teacherClass: string | null = (typeof rawClass === 'string' && isNaN(Number(rawClass))) ? rawClass : (classByTeacherEmail?.name || null);
+  const teacherClassObject = teacherClass ? (classes?.find((c: any) => c.name === teacherClass) || classByTeacherEmail) : null;
+  const teacherDepartment = teacherClassObject?.department || currentUserInfo?.department || '';
 
   // Base list of students belonging to this teacher's class
   const realStudents = users.filter(u => u.role === 'student').map(u => ({
@@ -620,6 +621,23 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     (studentManagementPage - 1) * studentPageSize,
     studentManagementPage * studentPageSize
   );
+
+  // Guard: teacher not yet assigned to any class
+  if (!teacherClass) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '18px', textAlign: 'center', padding: '40px' }}>
+        <div style={{ fontSize: '3.5rem' }}>🏫</div>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>No Class Assigned</h2>
+        <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', maxWidth: '440px', lineHeight: 1.6 }}>
+          You are not currently assigned as a class teacher to any class. Please contact an administrator to be added to the
+          &nbsp;<strong>Class Teachers Council</strong>&nbsp;and assigned to your class.
+        </p>
+        <div style={{ padding: '12px 24px', background: 'rgba(99,102,241,0.08)', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.2)', fontSize: '0.85rem', color: '#4f46e5', fontWeight: 600 }}>
+          📧 {currentUserInfo?.email || 'Your email'}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'relative', minHeight: '85vh' }}>
