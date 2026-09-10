@@ -140,6 +140,12 @@ export interface Champion {
   image: string;
 }
 
+export interface AssignedCategoryItem {
+  id?: number;
+  code?: string;
+  name?: string;
+}
+
 export interface UserGroupMemberDetail {
   id?: number;
   name: string;
@@ -147,7 +153,7 @@ export interface UserGroupMemberDetail {
   department?: string | null;
   assigned_class?: string | null;
   badge?: string | null;
-  categories?: string[];
+  categories?: (string | AssignedCategoryItem)[];
 }
 
 export interface UserGroup {

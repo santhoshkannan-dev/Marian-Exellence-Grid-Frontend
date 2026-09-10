@@ -466,21 +466,24 @@ export default function AdminGroupsPage() {
                               <td style={{ padding: '12px 14px' }}>
                                 {m.categories && m.categories.length > 0 ? (
                                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                    {m.categories.map((c, cIdx) => (
-                                      <span
-                                        key={cIdx}
-                                        style={{
-                                          padding: '2px 8px',
-                                          background: '#f3e8ff',
-                                          color: '#7e22ce',
-                                          borderRadius: '8px',
-                                          fontSize: '0.72rem',
-                                          fontWeight: 700
-                                        }}
-                                      >
-                                        {c}
-                                      </span>
-                                    ))}
+                                    {m.categories.map((c, cIdx) => {
+                                      const catName = typeof c === 'object' && c !== null ? (c.name || c.code || '') : String(c);
+                                      return (
+                                        <span
+                                          key={cIdx}
+                                          style={{
+                                            padding: '2px 8px',
+                                            background: '#f3e8ff',
+                                            color: '#7e22ce',
+                                            borderRadius: '8px',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 700
+                                          }}
+                                        >
+                                          {catName}
+                                        </span>
+                                      );
+                                    })}
                                   </div>
                                 ) : (
                                   <span className="muted" style={{ fontSize: '0.78rem', fontStyle: 'italic' }}>
