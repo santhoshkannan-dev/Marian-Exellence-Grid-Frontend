@@ -22,7 +22,7 @@ export const ScoreCalculation: React.FC = () => {
                 M = max(0, (S - P) + Mod) ÷ N
               </div>
               <div style={{ fontFamily: 'monospace', fontSize: '0.84rem', color: '#4338ca', marginTop: '6px' }}>
-                Mod = min(200, max(0, 2 × (N - n)))
+                Mod = min(100, max(0, 2 × (N - n)))
               </div>
               <p style={{ fontSize: '0.78rem', color: '#6366f1', margin: '8px 0 0 0' }}>
                 S = Evaluated Marks | P = Penalties | N = Class Size | n = Smallest Class (Benchmark)
@@ -35,7 +35,7 @@ export const ScoreCalculation: React.FC = () => {
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: '#ffffff', fontWeight: 800, fontSize: '0.84rem', flexShrink: 0 }}>1</span>
               <div>
                 <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>Obtained Net Score (S - P)</h4>
-                <p className="muted" style={{ fontSize: '0.84rem', margin: 0 }}>Verified marks across all 13 evaluation categories minus any class penalty points.</p>
+                <p className="muted" style={{ fontSize: '0.84rem', margin: 0 }}>Verified marks across all 12 evaluation categories minus any class penalty points.</p>
               </div>
             </div>
 
@@ -44,7 +44,7 @@ export const ScoreCalculation: React.FC = () => {
               <div>
                 <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>Class Strength Moderation Mark (Mod)</h4>
                 <p className="muted" style={{ fontSize: '0.84rem', margin: 0 }}>
-                  Moderation is based on class strength (Range: 0–200). The benchmark smallest class receives 0 moderation marks, while larger classes receive 2 marks per additional student up to a max cap of 200 marks.
+                  Moderation is based on class strength (Range: 0–100). The benchmark smallest class receives 0 moderation marks, while larger classes receive 2 marks per additional student up to a max cap of 100 marks.
                 </p>
               </div>
             </div>

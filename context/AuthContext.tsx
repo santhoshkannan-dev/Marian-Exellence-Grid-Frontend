@@ -13,6 +13,8 @@ export interface CurrentUserInfo {
   department_code: string | null;
   class_name: string | null;
   picture?: string;
+  is_student_rep?: boolean;
+  isStudentRep?: boolean;
 }
 
 export const mapBackendRoleToFrontend = (backendRole: string): string => {
@@ -150,6 +152,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    const isRep = Boolean(userData.is_student_rep || userData.isStudentRep);
+    if (userData.is_student_rep !== undefined || userData.isStudentRep !== undefined) {
+      setIsStudentRep(isRep);
+    }
+
     setCurrentUserInfo({
       id: userData.id,
       email: userData.email,
@@ -159,6 +166,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       department_code: departmentCode,
       class_name: className,
       picture: userData.picture,
+      is_student_rep: isRep,
+      isStudentRep: isRep,
     });
   }, []);
 
@@ -216,6 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setLoggedIn(true);
               setCurrentRole(mapBackendRoleToFrontend(userData.role));
               setCurrentUserId(userData.id);
+              setIsStudentRep(Boolean(userData.is_student_rep || userData.isStudentRep));
             }
           } catch (err: any) {
             console.warn('Initial session verification failed:', err.message);
@@ -259,6 +269,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoggedIn(true);
         setCurrentRole(feRole);
         setCurrentUserId(data.user.id);
+        setIsStudentRep(Boolean(data.user.is_student_rep || data.user.isStudentRep));
 
         apiClient.setTokens(data.tokens.access, data.tokens.refresh);
 
@@ -287,6 +298,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoggedIn(true);
         setCurrentRole(feRole);
         setCurrentUserId(data.user.id);
+        setIsStudentRep(Boolean(data.user.is_student_rep || data.user.isStudentRep));
 
         apiClient.setTokens(data.tokens.access, data.tokens.refresh);
 
