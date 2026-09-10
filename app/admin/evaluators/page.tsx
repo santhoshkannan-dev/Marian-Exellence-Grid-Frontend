@@ -16,6 +16,7 @@ export default function EvaluatorManagementPage() {
     deleteEvaluator,
   } = useApp();
 
+  // Refresh evaluators list when page is visited
   React.useEffect(() => {
     fetchEvaluators();
   }, [fetchEvaluators]);

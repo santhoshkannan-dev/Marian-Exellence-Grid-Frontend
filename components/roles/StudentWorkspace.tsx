@@ -719,17 +719,19 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
   // Determine current logged in Student Representative's class
   const currentStudentObj = students.find((s) => s.id === currentStudentId);
   const parsedRepEmail = currentEmail ? parseStudentEmail(currentEmail) : null;
-  const repClass =
+  const repClass: string | null =
     (currentUserInfo as any)?.className ||
     (currentUserInfo as any)?.class_name ||
     parsedRepEmail?.className ||
     currentStudentObj?.className ||
-    'II MCA';
+    null;
 
   // Peer Submissions for Group Verification Desk (Includes ALL users' submissions from the same class as Student Representative ONLY for verification)
   const peerSubmissions = submissions.filter((sub) => {
     // Exclude draft submissions from verification desk
     if (sub.status === 'Draft') return false;
+    // If rep's class is unknown, show all non-draft submissions so the desk isn't blank
+    if (!repClass) return true;
 
     const subEmail = (
       (sub as any).user_email ||
@@ -749,14 +751,14 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
 
     const parsedSubEmail = subEmail ? parseStudentEmail(subEmail) : null;
 
-    const studentClass =
+    const studentClass: string =
       (sub as any).className ||
       (sub as any).class_name ||
       (sub as any).studentClass ||
       (sub as any).user_class ||
-      (isOwnSubmission ? ((currentUserInfo as any)?.className || (currentUserInfo as any)?.class_name) : '') ||
-      (userObj as any)?.className ||
+      (isOwnSubmission ? ((currentUserInfo as any)?.class_name || (currentUserInfo as any)?.className) : '') ||
       (userObj as any)?.class_name ||
+      (userObj as any)?.className ||
       studentObj?.className ||
       parsedSubEmail?.className ||
       '';
