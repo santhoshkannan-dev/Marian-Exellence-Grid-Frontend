@@ -8,7 +8,7 @@ import { useApp } from '@/context/AppContext';
 export default function EvaluatorLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loggedIn, logout, selectedAcademicYear, isInitialized } = useApp();
+  const { loggedIn, logout, selectedAcademicYear, isInitialized, isClassTeacher, isEvaluator, switchRole } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -188,6 +188,37 @@ export default function EvaluatorLayout({ children }: { children: React.ReactNod
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            {isClassTeacher && (
+              <button
+                id="role-switch-to-teacher-btn"
+                className="role-switcher-btn"
+                onClick={() => {
+                  switchRole('class_teacher');
+                  router.push('/teacher/dashboard');
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '7px 16px',
+                  borderRadius: '10px',
+                  fontSize: '0.86rem',
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Switch to Class Teacher View"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                Switch to Class Teacher
+              </button>
+            )}
             <span
               style={{
                 padding: '6px 16px',

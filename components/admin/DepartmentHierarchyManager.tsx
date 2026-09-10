@@ -134,6 +134,28 @@ export function DepartmentHierarchyManager() {
       .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
   }, [users, classTeachersGroup]);
 
+  // Helper to get faculty available for a specific class (excludes faculty assigned to other classes)
+  const getSelectableFacultyForClass = (excludeClassId?: number, currentAdvisorEmail?: string) => {
+    const assignedEmails = new Set<string>();
+    (classes || []).forEach((c: any) => {
+      if (excludeClassId && c.id === excludeClassId) return;
+      const pending = classEdits[c.id]?.classTeacher;
+      const email = (pending !== undefined ? pending : (c.classTeacher || c.class_teacher_email || c.class_teacher?.email || '')).trim().toLowerCase();
+      if (email) {
+        assignedEmails.add(email);
+      }
+    });
+
+    const currentEmail = (currentAdvisorEmail || '').trim().toLowerCase();
+    return availableFaculty.filter((f) => {
+      const fEmail = (f.email || '').trim().toLowerCase();
+      // Always allow the currently assigned advisor for this class
+      if (currentEmail && fEmail === currentEmail) return true;
+      // Exclude if already assigned to another class
+      return !assignedEmails.has(fEmail);
+    });
+  };
+
   // Toggle accordions
   const toggleDept = (deptId: number) => {
     setExpandedDepts((prev) => ({ ...prev, [deptId]: !prev[deptId] }));
@@ -473,14 +495,17 @@ export function DepartmentHierarchyManager() {
               }}
             >
               <option value="">Select Faculty Advisor</option>
-              {availableFaculty.length === 0 && (
-                <option value="" disabled>No teachers in Class Teachers Council yet</option>
-              )}
-              {availableFaculty.map((f) => (
-                <option key={f.id || f.email} value={f.email}>
-                  ⭐ {f.name} ({f.email})
-                </option>
-              ))}
+              {(() => {
+                const selectableFaculty = getSelectableFacultyForClass(cls.id, currentAdvisor);
+                if (selectableFaculty.length === 0) {
+                  return <option value="" disabled>All council teachers already allocated</option>;
+                }
+                return selectableFaculty.map((f) => (
+                  <option key={f.id || f.email} value={f.email}>
+                    ⭐ {f.name} ({f.email})
+                  </option>
+                ));
+              })()}
             </select>
           </div>
 
@@ -1565,14 +1590,20 @@ export function DepartmentHierarchyManager() {
                         onChange={(e) => setClassForm({ ...classForm, classTeacher: e.target.value })}
                       >
                         <option value="">Select Faculty Advisor (optional)</option>
-                        {availableFaculty.length === 0 && (
-                          <option value="" disabled>No teachers in Class Teachers Council yet</option>
-                        )}
-                        {availableFaculty.map((f) => (
-                          <option key={f.email} value={f.email}>
-                            ⭐ {f.name} ({f.email})
-                          </option>
-                        ))}
+                        {(() => {
+                          const modalSelectable = getSelectableFacultyForClass(
+                            classModal.mode === 'edit' ? classModal.cls?.id : undefined,
+                            classForm.classTeacher
+                          );
+                          if (modalSelectable.length === 0) {
+                            return <option value="" disabled>All council teachers already allocated</option>;
+                          }
+                          return modalSelectable.map((f) => (
+                            <option key={f.email} value={f.email}>
+                              ⭐ {f.name} ({f.email})
+                            </option>
+                          ));
+                        })()}
                       </select>
                     </div>
 

@@ -6,7 +6,7 @@ import { isStaffEmail, isStudentEmail } from '@/data/initialData';
 import { CustomModal } from '@/components/CustomModal';
 
 export default function AdminGroupsPage() {
-  const { userGroups, users, addUserGroup, deleteUserGroup, addUserToGroup, removeUserFromGroup } = useApp();
+  const { userGroups, users, classes, addUserGroup, deleteUserGroup, addUserToGroup, removeUserFromGroup } = useApp();
   const [deleteGroupModal, setDeleteGroupModal] = useState<{ id: string; name: string } | null>(null);
 
   // Create Group State
@@ -82,7 +82,7 @@ export default function AdminGroupsPage() {
       return;
     }
 
-    const success = await addUserToGroup(groupId, emailToAdd);
+    const success = addUserToGroup(groupId, emailToAdd);
     if (success) {
       setStatusMsgs((prev) => ({ ...prev, [groupId]: { type: 'success', msg: `Added ${emailToAdd} to group!` } }));
       setEmailInputs((prev) => ({ ...prev, [groupId]: '' }));
@@ -328,43 +328,106 @@ export default function AdminGroupsPage() {
 
                   {group.emails.length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '160px', overflowY: 'auto', padding: '4px 0' }}>
-                      {group.emails.map((email) => (
-                        <div
-                          key={email}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '4px 10px',
-                            background: '#eff6ff',
-                            border: '1px solid #bfdbfe',
-                            borderRadius: '16px',
-                            fontSize: '0.78rem',
-                            color: '#1e40af',
-                            fontWeight: 600
-                          }}
-                        >
-                          <span>{email}</span>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await removeUserFromGroup(group.id, email);
-                            }}
+                      {group.emails.map((email) => {
+                        const isCouncil = group.id === 'grp-class-teachers' || group.name.toLowerCase().includes('class teacher');
+                        const isDqc = group.id === 'grp-dqc-student-rep' || group.name.toLowerCase().includes('dqc');
+                        const assignedTeacherClass = isCouncil
+                          ? classes?.find((c: any) => {
+                              const tEmail = (c.classTeacher || c.class_teacher_email || c.class_teacher?.email || '').trim().toLowerCase();
+                              return tEmail === email.trim().toLowerCase();
+                            })
+                          : null;
+                        const assignedDqcClass = isDqc
+                          ? classes?.find((c: any) => {
+                              const dEmail = (c.dqcMember || c.dqc_member_email || c.dqc_member?.email || '').trim().toLowerCase();
+                              return dEmail === email.trim().toLowerCase();
+                            })
+                          : null;
+
+                        return (
+                          <div
+                            key={email}
                             style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#ef4444',
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              padding: '0 2px',
-                              lineHeight: 1
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '4px 10px',
+                              background: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              borderRadius: '16px',
+                              fontSize: '0.78rem',
+                              color: '#1e40af',
+                              fontWeight: 600
                             }}
-                            title={`Remove ${email} from group`}
                           >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+                            <span>{email}</span>
+                            {isCouncil && (
+                              assignedTeacherClass ? (
+                                <span
+                                  style={{
+                                    background: '#dcfce7',
+                                    color: '#15803d',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700
+                                  }}
+                                  title={`Allocated to ${assignedTeacherClass.name}`}
+                                >
+                                  ✓ {assignedTeacherClass.name}
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    background: '#f1f5f9',
+                                    color: '#64748b',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 600
+                                  }}
+                                  title="Not yet allocated to any class"
+                                >
+                                  Unassigned
+                                </span>
+                              )
+                            )}
+                            {isDqc && assignedDqcClass && (
+                              <span
+                                style={{
+                                  background: '#ede9fe',
+                                  color: '#6d28d9',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700
+                                }}
+                                title={`DQC Rep for ${assignedDqcClass.name}`}
+                              >
+                                ⭐ {assignedDqcClass.name}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await removeUserFromGroup(group.id, email);
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#ef4444',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                padding: '0 2px',
+                                lineHeight: 1
+                              }}
+                              title={`Remove ${email} from group`}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="muted" style={{ fontSize: '0.82rem', fontStyle: 'italic' }}>

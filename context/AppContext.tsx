@@ -47,21 +47,11 @@ import { SubmissionProvider, useSubmissions } from '@/context/SubmissionContext'
 import { RankingProvider, useRankings, ClassIndexEntry } from '@/context/RankingContext';
 
 export interface AppContextType {
+  // Auth slice
   currentRole: string;
-  activePage: string;
   loggedIn: boolean;
   currentUserId: number | null;
   currentStudentId: number;
-  selectedAcademicYear: string;
-  activeAcademicYear: string;
-  academicYears: string[];
-  submissionOpen: boolean;
-  evaluationOpen: boolean;
-  submissions: Submission[];
-  criteriaCatalog: CriteriaCategory[];
-  users: AppUser[];
-  students: Student[];
-  userGroups: UserGroup[];
   jwtToken: string | null;
   currentUserInfo: {
     id: number;
@@ -72,81 +62,114 @@ export interface AppContextType {
     department_code: string | null;
     class_name: string | null;
     picture?: string;
+    is_student_rep?: boolean;
+    is_dqc_member?: boolean;
+    is_class_teacher?: boolean;
+    assigned_class_name?: string | null;
+    is_evaluator?: boolean;
+    available_roles?: string[];
+    priority_role?: string;
   } | null;
+  isInitialized: boolean;
+  isStudentRep: boolean;
+  isDqcMember: boolean;
+  isClassTeacher: boolean;
+  isEvaluator: boolean;
+  assignedClassName: string | null;
+  availableRoles: string[];
+  priorityRole: string;
   setRole: (role: string) => void;
+  loginAsRole: (role: string) => void;
+  loginWithGoogleToken: (idToken: string) => Promise<{ success: boolean; error?: string; priorityRole?: string }>;
+  loginBypass: (email: string, role?: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
+  updateUserProfile: (name: string, className: string) => Promise<{ success: boolean; error?: string }>;
+  toggleStudentRepMode: () => void;
+  switchRole: (role: string) => void;
+
+  // Navigation & Settings slice
+  activePage: string;
   setActivePage: (page: string) => void;
+  selectedAcademicYear: string;
+  activeAcademicYear: string;
+  academicYears: string[];
   setAcademicYear: (year: string) => void;
-  fetchSubmissions: () => Promise<void>;
+  submissionOpen: boolean;
+  evaluationOpen: boolean;
+  submissionWindowStart: string;
+  submissionWindowEnd: string;
+  toggleSubmissionOpen: () => void;
+  toggleEvaluationOpen: () => void;
+  setSubmissionWindow: (start: string, end: string) => void;
+
+  // Submissions slice
+  submissions: Submission[];
+  editingSubId: number | null;
+  setEditingSubId: (id: number | null) => void;
+  fetchSubmissions: (academicYear?: string) => Promise<void>;
   addSubmission: (newSub: Omit<Submission, 'id'>) => void;
   updateSubmission: (id: number, updates: Partial<Submission>) => void;
   deleteSubmission: (id: number) => void;
+
+  // Criteria slice
+  criteriaCatalog: CriteriaCategory[];
+  departments: any[];
+  courses: any[];
+  classes: any[];
+  fetchCriteriaCatalog: () => Promise<void>;
   addCriteriaItem: (categoryId: string | number, item: Omit<CriteriaItem, 'id'>) => void;
   updateCriteriaItem: (categoryId: string | number, itemId: number, item: Partial<CriteriaItem>) => void;
   deleteCriteriaItem: (categoryId: string | number, itemId: number) => void;
   addCriteriaCategory: (category: Omit<CriteriaCategory, 'id' | 'items'>) => Promise<any>;
   updateCriteriaCategory: (categoryId: string | number, category: Partial<CriteriaCategory>) => void;
   deleteCriteriaCategory: (categoryId: string | number) => void;
-  fetchCriteriaCatalog: () => Promise<void>;
-  addUser: (user: Omit<AppUser, 'id'>) => void;
-  toggleUserApproval: (userId: number) => void;
-  toggleSubmissionOpen: () => void;
-  toggleEvaluationOpen: () => void;
-  submissionWindowStart: string;
-  submissionWindowEnd: string;
-  setSubmissionWindow: (start: string, end: string) => void;
-  loginAsRole: (role: string) => void;
-  loginWithGoogleToken: (idToken: string) => Promise<{ success: boolean; error?: string }>;
-  loginBypass: (email: string, role?: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  addStudent: (student: Omit<Student, 'id'>) => void;
-  deleteStudent: (id: number) => void;
-  addUserGroup: (group: Omit<UserGroup, 'id'>) => void;
-  deleteUserGroup: (groupId: string) => void;
-  isStudentRep: boolean;
-  isDqcMember: boolean;
-  toggleStudentRepMode: () => void;
-  addUserToGroup: (groupId: string, email: string) => boolean;
-  removeUserFromGroup: (groupId: string, email: string) => void;
-  updateUserProfile: (name: string, className: string) => Promise<{ success: boolean; error?: string }>;
-  editingSubId: number | null;
-  setEditingSubId: (id: number | null) => void;
-  evaluators: EvaluatorUser[];
-  fetchEvaluators: () => Promise<void>;
-  createEvaluator: (data: { email: string; name?: string; assigned_categories?: string[] }) => Promise<{ success: boolean; error?: string; data?: any }>;
-  updateEvaluatorCategories: (email: string, assigned_categories: string[], name?: string) => Promise<{ success: boolean; error?: string; data?: any }>;
-  deleteEvaluator: (email: string) => Promise<{ success: boolean; error?: string }>;
-
-  classes: any[];
-  departments: any[];
-  courses: Course[];
+  assignEvaluatorsToCategory: (categoryCode: string, evaluators: string[]) => Promise<any>;
   fetchDepartmentsFull: () => Promise<void>;
-  createDepartment: (data: { name: string; code?: string; email_prefix?: string; level?: string }) => Promise<{ success: boolean; error?: string; data?: any }>;
-  updateDepartment: (id: number, data: { name?: string; code?: string; email_prefix?: string; level?: string }) => Promise<{ success: boolean; error?: string; data?: any }>;
-  deleteDepartmentById: (id: number) => Promise<{ success: boolean; error?: string; deleted_courses?: number; deleted_classes?: number }>;
+  createDepartment: (dept: any) => Promise<any>;
+  updateDepartment: (id: number, dept: any) => Promise<any>;
+  deleteDepartmentById: (id: number) => Promise<any>;
   fetchCourses: (deptId?: number) => Promise<void>;
-  createCourse: (data: { department: number; name: string; abbreviation: string; email_code: string; is_multi_batch?: boolean; duration_years?: number }) => Promise<{ success: boolean; error?: string; data?: any }>;
-  updateCourse: (id: number, data: { department?: number; name?: string; abbreviation?: string; email_code?: string; is_multi_batch?: boolean; duration_years?: number }) => Promise<{ success: boolean; error?: string; data?: any }>;
-  deleteCourse: (id: number) => Promise<{ success: boolean; error?: string; deleted_classes?: number }>;
-  createClass: (data: { course_id?: number; department_code?: string; name?: string; year_number?: number; section?: string; batch_start_year?: number }) => Promise<{ success: boolean; error?: string; data?: any }>;
-  updateClass: (id: number, data: any) => Promise<{ success: boolean; error?: string; data?: any }>;
-  deleteClass: (id: number) => Promise<{ success: boolean; error?: string }>;
-  addAcademicYearGlobal: (year: string) => Promise<void>;
-  deleteAcademicYearGlobal: (year: string) => Promise<void>;
-  setActiveAcademicYearGlobal: (year: string, isActive?: boolean) => Promise<void>;
+  createCourse: (course: any) => Promise<any>;
+  updateCourse: (id: number, course: any) => Promise<any>;
+  deleteCourse: (id: number) => Promise<any>;
+  createClass: (cls: any) => Promise<any>;
+  updateClass: (id: number, cls: any) => Promise<any>;
+  deleteClass: (id: number) => Promise<any>;
   addDepartmentGlobal: (name: string, code: string) => Promise<void>;
   deleteDepartmentGlobal: (code: string) => Promise<void>;
   addClassGlobal: (name: string, deptCode: string) => Promise<void>;
   updateClassMapping: (name: string, teacherEmail: string, dqcEmail: string) => Promise<void>;
-  addUserGlobal: (email: string, role: string, name: string, deptCode: string, className: string) => Promise<void>;
-  assignEvaluatorsToCategory: (categoryId: string, evaluators: string[]) => Promise<void>;
-  championsData: Record<string, Champion[]>;
-  fetchChampions: () => Promise<void>;
-  isInitialized: boolean;
-  classIndexData: ClassIndexEntry[] | null;
+
+  // Rankings slice
+  classIndexData: ClassIndexEntry[];
   smallestClassSize: number;
+  championsData: Record<string, any>;
   fetchClassIndex: (year?: string) => Promise<void>;
   updateClassModeration: (classId: number, numStudents: number, negativePoints: number) => Promise<void>;
-  updateSmallestClassSize: (n: number) => Promise<void>;
+  updateSmallestClassSize: (size: number) => void;
+  fetchChampions: () => Promise<void>;
+
+  // Admin & Users slice
+  users: AppUser[];
+  students: Student[];
+  userGroups: UserGroup[];
+  addUser: (user: Omit<AppUser, 'id'>) => void;
+  toggleUserApproval: (userId: number) => void;
+  addStudent: (student: Omit<Student, 'id'>) => void;
+  deleteStudent: (id: number) => void;
+  addUserGroup: (group: Omit<UserGroup, 'id'>) => void;
+  deleteUserGroup: (groupId: string) => void;
+  addUserToGroup: (groupId: string, email: string) => boolean;
+  removeUserFromGroup: (groupId: string, email: string) => void;
+  addAcademicYearGlobal: (year: string) => Promise<void>;
+  deleteAcademicYearGlobal: (year: string) => Promise<void>;
+  setActiveAcademicYearGlobal: (year: string, isActive?: boolean) => Promise<void>;
+  addUserGlobal: (email: string, role: string, name: string, deptCode: string, className: string) => Promise<void>;
+  evaluators: EvaluatorUser[];
+  fetchEvaluators: () => Promise<void>;
+  createEvaluator: (data: { email: string; name?: string; assigned_categories?: string[] } | string, name?: string) => Promise<{ success: boolean; error?: string; data?: any }>;
+  updateEvaluatorCategories: (email: string, categories: string[], name?: string) => Promise<{ success: boolean; error?: string; data?: any }>;
+  deleteEvaluator: (email: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -287,9 +310,12 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
   }, []);
 
   const createEvaluator = useCallback(
-    async (data: { email: string; name?: string; assigned_categories?: string[] }) => {
+    async (dataOrEmail: { email: string; name?: string; assigned_categories?: string[] } | string, maybeName?: string) => {
       try {
-        const resData = await apiClient.post('/evaluators/', data);
+        const payload = typeof dataOrEmail === 'string'
+          ? { email: dataOrEmail, name: maybeName }
+          : dataOrEmail;
+        const resData = await apiClient.post('/evaluators/', payload);
         setEvaluators((prev) => {
           const filtered = prev.filter((e) => e.email.toLowerCase() !== resData.email.toLowerCase());
           return [...filtered, resData];
@@ -572,6 +598,11 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
       isInitialized: auth.isInitialized,
       isStudentRep: auth.isStudentRep,
       isDqcMember: auth.isDqcMember,
+      isClassTeacher: auth.isClassTeacher,
+      isEvaluator: auth.isEvaluator,
+      assignedClassName: auth.assignedClassName,
+      availableRoles: auth.availableRoles,
+      priorityRole: auth.priorityRole,
       setRole: auth.setRole,
       loginAsRole: auth.loginAsRole,
       loginWithGoogleToken: auth.loginWithGoogleToken,
@@ -579,6 +610,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
       logout: auth.logout,
       updateUserProfile: auth.updateUserProfile,
       toggleStudentRepMode: auth.toggleStudentRepMode,
+      switchRole: auth.switchRole,
 
       // Navigation & Settings slice
       activePage,
