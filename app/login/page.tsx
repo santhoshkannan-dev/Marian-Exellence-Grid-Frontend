@@ -62,13 +62,13 @@ export default function LoginPage() {
     const priority = (user?.priority_role || '').toLowerCase();
     const rawRole = (user?.role || fallbackRole || currentRole || 'student').toLowerCase();
 
-    // Priority: class_teacher > evaluator > admin > student
-    if (priority === 'class_teacher' || (!priority && (rawRole === 'teacher' || rawRole === 'faculty'))) {
+    // Priority: admin/iqac > class_teacher > evaluator > student
+    if (rawRole === 'admin' || rawRole === 'iqac' || priority === 'admin' || priority === 'iqac') {
+      router.push('/admin/academic-years');
+    } else if (priority === 'class_teacher' || (!priority && (rawRole === 'teacher' || rawRole === 'faculty'))) {
       router.push('/teacher/dashboard');
     } else if (priority === 'evaluator' || (!priority && (rawRole === 'evaluator' || rawRole === 'evaluation'))) {
       router.push('/evaluator/dashboard');
-    } else if (rawRole === 'admin' || rawRole === 'iqac') {
-      router.push('/admin/academic-years');
     } else {
       router.push('/student/dashboard');
     }
@@ -188,8 +188,8 @@ export default function LoginPage() {
                     <option value="santhosh.25pmc152@mariancollege.org">Student/DQC Rep (santhosh.25pmc152 - II MCA)</option>
                     <option value="amal.25pmc114@mariancollege.org">PG Student (amal.25pmc114 - II MCA)</option>
                     <option value="santhosh.25ubc154@mariancollege.org">UG Student (santhosh.25ubc154 - II BCA A)</option>
-                    <option value={JSON.stringify({email: "kochumol.abraham@mariancollege.org", role: "faculty"})}>Class Teacher (Kochumol Abraham)</option>
-                    <option value={JSON.stringify({email: "allen.george@mariancollege.org", role: "evaluation"})}>Evaluator (Allen George)</option>
+                    <option value="kochumol.abraham@mariancollege.org">Class Teacher (Kochumol Abraham)</option>
+                    <option value="allen.george@mariancollege.org">Evaluator (Allen George)</option>
                     <option value="admin@mariancollege.org">Admin</option>
                   </select>
                 </div>

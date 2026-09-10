@@ -23,7 +23,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Redirect to login if not authenticated, or restrict non-teacher evaluators to evaluator dashboard
+  // Redirect to login if not authenticated, or restrict pure evaluators (non-class-teachers) to evaluator dashboard
   React.useEffect(() => {
     if (isInitialized && !loggedIn) {
       router.push('/login');
@@ -31,11 +31,12 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
       isInitialized &&
       loggedIn &&
       !isClassTeacher &&
-      (currentRole === 'evaluator' || currentRole === 'evaluation' || currentUserInfo?.role === 'evaluation')
+      currentUserInfo?.role === 'evaluation'
     ) {
+      // Only pure evaluators (not class teachers) should be redirected
       router.push('/evaluator/dashboard');
     }
-  }, [loggedIn, isInitialized, currentRole, currentUserInfo, isClassTeacher, router]);
+  }, [loggedIn, isInitialized, currentUserInfo, isClassTeacher, router]);
 
   if (!isInitialized) {
     return (
@@ -45,7 +46,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  if (!loggedIn || (!isClassTeacher && (currentRole === 'evaluator' || currentRole === 'evaluation' || currentUserInfo?.role === 'evaluation'))) {
+  if (!loggedIn || (!isClassTeacher && currentUserInfo?.role === 'evaluation')) {
     return null;
   }
 

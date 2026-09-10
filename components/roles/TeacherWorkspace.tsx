@@ -126,7 +126,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     (c.classTeacher && currentUserInfo?.email && c.classTeacher.toLowerCase() === currentUserInfo.email.toLowerCase()) ||
     (c.classTeacherEmail && currentUserInfo?.email && c.classTeacherEmail.toLowerCase() === currentUserInfo.email.toLowerCase())
   );
-  const rawClass = (currentUserInfo as any)?.class_name_display || (currentUserInfo as any)?.className || (currentUserInfo as any)?.class_name || classByTeacherEmail?.name;
+  const rawClass = (currentUserInfo as any)?.assigned_class_name || (currentUserInfo as any)?.class_name_display || (currentUserInfo as any)?.className || (currentUserInfo as any)?.class_name || classByTeacherEmail?.name;
   // teacherClass is null when the teacher is not assigned to any class
   const teacherClass: string | null = (typeof rawClass === 'string' && isNaN(Number(rawClass))) ? rawClass : (classByTeacherEmail?.name || null);
   const teacherClassObject = teacherClass ? (classes?.find((c: any) => c.name === teacherClass) || classByTeacherEmail) : null;

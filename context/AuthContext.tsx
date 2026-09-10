@@ -172,7 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const isRep = Boolean(userData.is_student_rep || userData.isStudentRep);
-    const isDqc = Boolean(userData.is_dqc_member);
+    const isDqc = Boolean(userData.is_dqc_rep || userData.is_dqc_member);
     const isTeacher = Boolean(userData.is_class_teacher);
     const isEval = Boolean(userData.is_evaluator);
     const assignedClass = userData.assigned_class_name || null;
