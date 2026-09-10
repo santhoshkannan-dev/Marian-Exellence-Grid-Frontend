@@ -34,7 +34,7 @@ const top10FallbackData: StandingItem[] = [
 ];
 
 const mockStudents = [
-  { name: 'Rahul S', className: 'BCA A', department: 'The Under-Graduate Department of Computer Applications' },
+  { name: 'Rahul S', className: 'I BCA A', department: 'UG Department of Computer Applications' },
   { name: 'Sneha K', className: 'BSc CS B', department: 'Computer Science' },
   { name: 'Arjun Prasad', className: 'BCom C', department: 'Commerce' },
   { name: 'Maria Antony', className: 'BA English A', department: 'English' },
@@ -1139,7 +1139,7 @@ export const LandingPage: React.FC = () => {
               </div>
               <div className="pillar-item">
                 <div className="pillar-bullet" style={{ background: '#f59e0b' }}></div>
-                <span className="pillar-text">IQAC Moderation</span>
+                <span className="pillar-text">Administrative Moderation</span>
               </div>
             </div>
           </div>

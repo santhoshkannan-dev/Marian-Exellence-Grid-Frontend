@@ -40,7 +40,7 @@ export const NavSidebar: React.FC = () => {
   const tooltipText = `Submission Window: ${submissionOpen ? 'OPEN' : 'CLOSED'}${windowPeriodText} (${activeAcademicYear || '2025-2026'})`;
 
   // Hide floating sidebar inside portal workspaces to prevent double sidebar overlap
-  const isPortalRoute = ['/student', '/teacher', '/admin', '/evaluator', '/iqac'].some(
+  const isPortalRoute = ['/student', '/teacher', '/admin', '/evaluator'].some(
     (prefix) => pathname.startsWith(prefix)
   );
 

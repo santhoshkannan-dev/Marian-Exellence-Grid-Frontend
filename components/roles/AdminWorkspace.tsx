@@ -1224,11 +1224,19 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({ view }) => {
                     }}
                   >
                     <option value="All Departments">All Departments</option>
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="Commerce">Commerce</option>
-                    <option value="The Under-Graduate Department of Computer Applications">The Under-Graduate Department of Computer Applications</option>
-                    <option value="The Post-Graduate Department of Computer Applications">The Post-Graduate Department of Computer Applications</option>
-                    <option value="Business Administration">Business Administration</option>
+                    <option value="Department of English / Languages">Department of English / Languages</option>
+                    <option value="School of Commerce and Professional Studies">School of Commerce and Professional Studies</option>
+                    <option value="UG Department of Business Administration">UG Department of Business Administration</option>
+                    <option value="UG Department of Computer Applications">UG Department of Computer Applications</option>
+                    <option value="School of Social Work">School of Social Work</option>
+                    <option value="Department of Mathematics">Department of Mathematics</option>
+                    <option value="Department of Communication and Media Studies">Department of Communication and Media Studies</option>
+                    <option value="Department of Hospitality and Tourism Management">Department of Hospitality and Tourism Management</option>
+                    <option value="Department of Physics">Department of Physics</option>
+                    <option value="Department of Economics">Department of Economics</option>
+                    <option value="Department of Psychology">Department of Psychology</option>
+                    <option value="Masters of Business Administration">Masters of Business Administration</option>
+                    <option value="PG Department of Computer Applications">PG Department of Computer Applications</option>
                   </select>
                 </div>
 
@@ -1265,7 +1273,8 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({ view }) => {
                     <option value="All Roles">All Roles</option>
                     <option value="Student">Student</option>
                     <option value="Teacher">Teacher</option>
-                    <option value="IQAC">IQAC</option>
+                    <option value="Evaluator">Evaluator</option>
+                    <option value="Admin">Admin</option>
                   </select>
                 </div>
 

@@ -129,7 +129,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
   const rawClass = (currentUserInfo as any)?.class_name_display || (currentUserInfo as any)?.className || (currentUserInfo as any)?.class_name || classByTeacherEmail?.name;
   const teacherClass = (typeof rawClass === 'string' && isNaN(Number(rawClass))) ? rawClass : (classByTeacherEmail?.name || 'II MCA');
   const teacherClassObject = classes?.find((c: any) => c.name === teacherClass) || classByTeacherEmail;
-  const teacherDepartment = teacherClassObject?.department || currentUserInfo?.department || 'The Post-Graduate Department of Computer Applications';
+  const teacherDepartment = teacherClassObject?.department || currentUserInfo?.department || 'PG Department of Computer Applications';
 
   // Base list of students belonging to this teacher's class
   const realStudents = users.filter(u => u.role === 'student').map(u => ({

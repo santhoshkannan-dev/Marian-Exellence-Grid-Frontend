@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 export const Footer: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const isPortalRoute = ['/student', '/teacher', '/admin', '/evaluator', '/iqac'].some(
+  const isPortalRoute = ['/student', '/teacher', '/admin', '/evaluator'].some(
     (prefix) => pathname.startsWith(prefix)
   );
 

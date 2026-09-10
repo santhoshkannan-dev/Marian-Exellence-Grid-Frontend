@@ -17,7 +17,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     if (isInitialized) {
       if (!loggedIn) {
         router.push('/login');
-      } else if (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin' && currentRole !== 'iqac') {
+      } else if (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin') {
         const dest = (currentRole === 'student') ? '/student/dashboard' : '/evaluator/dashboard';
         router.push(dest);
       }
@@ -34,7 +34,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  if (!loggedIn || (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin' && currentRole !== 'iqac')) {
+  if (!loggedIn || (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin')) {
     return (
       <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>

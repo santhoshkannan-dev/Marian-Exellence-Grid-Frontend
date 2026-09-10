@@ -270,7 +270,7 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
   const [expandedDept, setExpandedDept] = useState<string | null>(null);
 
   const [lookupType, setLookupType] = useState<'department' | 'class'>('department');
-  const [selectedLookupGroup, setSelectedLookupGroup] = useState<string>('The Post-Graduate Department of Computer Applications');
+  const [selectedLookupGroup, setSelectedLookupGroup] = useState<string>('PG Department of Computer Applications');
 
   const getTopStudent = () => {
     const filtered = studentsList.filter(s => 
@@ -448,8 +448,8 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
                       onChange={(e) => {
                         const val = e.target.value as 'department' | 'class';
                         setLookupType(val);
-                        const firstDept = classes.length > 0 ? classes[0].department : 'The Post-Graduate Department of Computer Applications';
-                        const firstClass = classes.length > 0 ? classes[0].name : 'BCA A';
+                        const firstDept = classes.length > 0 ? classes[0].department : 'PG Department of Computer Applications';
+                        const firstClass = classes.length > 0 ? classes[0].name : 'I MCA';
                         setSelectedLookupGroup(val === 'department' ? firstDept : firstClass);
                       }}
                     >

@@ -319,13 +319,12 @@ export const defaultStudents: Student[] = [
 export const defaultSubmissions: Submission[] = [];
 
 export const defaultUsers: AppUser[] = [
-  { id: 101, name: "Amal Thomas", email: "amal.25pmc114@mariancollege.org", role: "student", className: "II MCA", department: "The Post-Graduate Department of Computer Applications", isApproved: true },
-  { id: 102, name: "Santhosh Kannan", email: "santhosh.25pmc152@mariancollege.org", role: "student", className: "II MCA", department: "The Post-Graduate Department of Computer Applications", isApproved: true, isStudentRep: true },
-  { id: 103, name: "Santhosh Kannan", email: "santhosh.25ubc154@mariancollege.org", role: "student", className: "II BCA A", department: "The Under-Graduate Department of Computer Applications", isApproved: true },
-  { id: 104, name: "Prof. Kochumol Abraham", email: "kochumol.abraham@mariancollege.org", role: "teacher", className: "II MCA", department: "The Post-Graduate Department of Computer Applications", isApproved: true },
-  { id: 105, name: "Allen George", email: "allen.george@mariancollege.org", role: "evaluator", department: "Computer Science", isApproved: true },
-  { id: 106, name: "IQAC Coordinator", email: "iqac@mariancollege.org", role: "iqac", department: "Internal Quality Assurance Cell", isApproved: true },
-  { id: 107, name: "System Administrator", email: "admin@mariancollege.org", role: "admin", department: "Administration", isApproved: true }
+  { id: 101, name: "Amal Thomas", email: "amal.25pmc114@mariancollege.org", role: "student", className: "II MCA", department: "PG Department of Computer Applications", isApproved: true },
+  { id: 102, name: "Santhosh Kannan", email: "santhosh.25pmc152@mariancollege.org", role: "student", className: "II MCA", department: "PG Department of Computer Applications", isApproved: true, isStudentRep: true },
+  { id: 103, name: "Santhosh Kannan", email: "santhosh.25ubc154@mariancollege.org", role: "student", className: "II BCA A", department: "UG Department of Computer Applications", isApproved: true },
+  { id: 104, name: "Prof. Kochumol Abraham", email: "kochumol.abraham@mariancollege.org", role: "teacher", className: "II MCA", department: "PG Department of Computer Applications", isApproved: true },
+  { id: 105, name: "Allen George", email: "allen.george@mariancollege.org", role: "evaluator", department: "PG Department of Computer Applications", isApproved: true },
+  { id: 107, name: "System Administrator", email: "admin@mariancollege.org", role: "admin", isApproved: true }
 ];
 
 export const defaultAcademicYears = ["2025-2026", "2024-2025", "2023-2024"];

@@ -8,8 +8,8 @@ export const BestClassDashboard: React.FC = () => {
     { rank: 1, className: 'BSc CS A', department: 'Computer Science', totalScore: 345, badge: '🥇 Top Class' },
     { rank: 2, className: 'BCom B', department: 'Commerce', totalScore: 310, badge: '🥈 2nd Place' },
     { rank: 3, className: 'BA English C', department: 'English', totalScore: 285, badge: '🥉 3rd Place' },
-    { rank: 4, className: 'BCA A', department: 'The Under-Graduate Department of Computer Applications', totalScore: 260, badge: '' },
-    { rank: 5, className: 'BBA A', department: 'Business Administration', totalScore: 240, badge: '' },
+    { rank: 4, className: 'I BCA A', department: 'UG Department of Computer Applications', totalScore: 260, badge: '' },
+    { rank: 5, className: 'I BBA A', department: 'UG Department of Business Administration', totalScore: 240, badge: '' },
   ];
 
   return (

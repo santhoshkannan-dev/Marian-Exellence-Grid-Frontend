@@ -20,88 +20,123 @@ export const mapBackendRoleToFrontend = (backendRole: string): string => {
   const role = backendRole.toLowerCase();
   if (role === 'faculty') return 'teacher';
   if (role === 'evaluation') return 'evaluator';
-  return role; // student, iqac, admin
+  return role; // student, admin
+};
+
+const DEPARTMENT_COURSE_MAP: Record<string, {
+  deptCode: string;
+  department: string;
+  course: string;
+  displayCourse: string;
+  level: 'UG' | 'PG';
+  multiBatch: boolean;
+}> = {
+  ce: { deptCode: 'ENG', department: 'Department of English / Languages', course: 'BA Communicative English', displayCourse: 'BACE', level: 'UG', multiBatch: false },
+  bm: { deptCode: 'SCPS', department: 'School of Commerce and Professional Studies', course: 'Bachelor of Commerce', displayCourse: 'BCOM', level: 'UG', multiBatch: true },
+  mm: { deptCode: 'SCPS', department: 'School of Commerce and Professional Studies', course: 'Master of Commerce', displayCourse: 'MCOM', level: 'PG', multiBatch: true },
+  bf: { deptCode: 'SCPS', department: 'School of Commerce and Professional Studies', course: 'B.Com FinTech with Applied AI', displayCourse: 'BCOM (FINTECH)', level: 'UG', multiBatch: false },
+  bb: { deptCode: 'UGBBA', department: 'UG Department of Business Administration', course: 'Bachelor of Business Administration', displayCourse: 'BBA', level: 'UG', multiBatch: true },
+  bc: { deptCode: 'UGDCA', department: 'UG Department of Computer Applications', course: 'Bachelor of Computer Applications', displayCourse: 'BCA', level: 'UG', multiBatch: true },
+  sw: { deptCode: 'SSW', department: 'School of Social Work', course: 'Bachelor of Social Work', displayCourse: 'BSW', level: 'UG', multiBatch: true },
+  psw: { deptCode: 'SSW', department: 'School of Social Work', course: 'Master of Social Work', displayCourse: 'MSW', level: 'PG', multiBatch: false },
+  ma: { deptCode: 'MATHS', department: 'Department of Mathematics', course: 'B.Sc Mathematics', displayCourse: 'MATHS', level: 'UG', multiBatch: false },
+  cm: { deptCode: 'MCMS', department: 'Department of Communication and Media Studies', course: 'Master of Communication and Media Studies', displayCourse: 'MCMS', level: 'PG', multiBatch: false },
+  ht: { deptCode: 'MHTM', department: 'Department of Hospitality and Tourism Management', course: 'Master of Hospitality and Tourism Management', displayCourse: 'MHTM', level: 'PG', multiBatch: false },
+  ph: { deptCode: 'PHYSICS', department: 'Department of Physics', course: 'M.Sc Integrated Physics', displayCourse: 'MSC PHYSICS', level: 'UG', multiBatch: false },
+  ec: { deptCode: 'ECONOMICS', department: 'Department of Economics', course: 'BA Economics', displayCourse: 'ECONOMICS', level: 'UG', multiBatch: false },
+  py: { deptCode: 'PSYCHOLOGY', department: 'Department of Psychology', course: 'B.Sc Psychology', displayCourse: 'PSYCHOLOGY', level: 'UG', multiBatch: false },
+  ba: { deptCode: 'MBA', department: 'Masters of Business Administration', course: 'Master of Business Administration', displayCourse: 'MBA', level: 'PG', multiBatch: true },
+  mc: { deptCode: 'PGDCA', department: 'PG Department of Computer Applications', course: 'Master of Computer Applications', displayCourse: 'MCA', level: 'PG', multiBatch: false },
+};
+
+const SECTION_MAP: Record<string, string> = {
+  '1': 'A',
+  '2': 'B',
+  '3': 'C',
+};
+
+const ROMAN_YEARS: Record<number, string> = {
+  1: 'I',
+  2: 'II',
+  3: 'III',
+  4: 'IV',
+  5: 'V',
+  6: 'VI',
 };
 
 export function parseStudentEmail(email: string) {
-  if (!email || !email.includes('@')) return null;
-  const usernamePart = email.split('@')[0];
-  const parts = usernamePart.split('.');
-  if (parts.length < 2) return null;
+  if (!email || typeof email !== 'string') return null;
+  const clean = email.trim().toLowerCase();
+  if (!clean.endsWith('@mariancollege.org')) return null;
 
-  const rawName = parts[0];
-  const codePart = parts[1];
+  const localPart = clean.slice(0, -'@mariancollege.org'.length);
+  const dotIndex = localPart.lastIndexOf('.');
+  if (dotIndex === -1) return null;
 
-  const firstName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  const namePart = localPart.slice(0, dotIndex);
+  const codePart = localPart.slice(dotIndex + 1);
 
-  if (!codePart || codePart.length < 5 || !/^\d{2}/.test(codePart)) return null;
+  // Capitalize name parts (e.g. faizah -> Faizah, mary.ann -> Mary Ann)
+  const firstName = namePart
+    .split('.')
+    .filter(Boolean)
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(' ');
 
-  const batchYear = 2000 + parseInt(codePart.substring(0, 2), 10);
-  const levelChar = codePart.charAt(2).toLowerCase();
-  const courseCode = codePart.substring(3, 5).toLowerCase();
-  const rollDigits = codePart.substring(5);
+  // Strict regex: YY (2 digits), L (u/p/i), CC (2 letters), D (1 digit), XX (2 digits)
+  let match = codePart.match(/^(\d{2})([upi])([a-z]{2})(\d)(\d{2})$/);
+  if (!match) {
+    // Fallback for variable length roll numbers
+    match = codePart.match(/^(\d{2})([upi])([a-z]{2})(\d)(\d+)$/);
+  }
+  if (!match) return null;
 
-  const isPg = levelChar === 'p';
-  const isUg = levelChar === 'u';
+  const [, batchStr, levelChar, courseCodeStr, sectionDigit, rollDigits] = match;
+  const batchYear = 2000 + parseInt(batchStr, 10);
+  const rollNumber = parseInt(rollDigits, 10);
 
-  const courseMap: Record<string, { full: string; abbr: string; field: string }> = {
-    mc: { full: 'Master of Computer Applications', abbr: 'MCA', field: 'Computer Applications' },
-    bc: { full: 'Bachelor of Computer Applications', abbr: 'BCA', field: 'Computer Applications' },
-    ba: { full: 'Bachelor of Business Administration', abbr: 'BBA', field: 'Business Administration' },
-    cm: { full: 'Commerce', abbr: 'BCom', field: 'Commerce' },
-    sw: { full: 'Social Work', abbr: 'MSW', field: 'Social Work' },
-  };
-
-  const courseInfo = courseMap[courseCode] || {
-    full: courseCode.toUpperCase(),
-    abbr: courseCode.toUpperCase(),
-    field: courseCode.toUpperCase(),
-  };
-
-  const department = isPg
-    ? `The Post-Graduate Department of ${courseInfo.field}`
-    : `The Under-Graduate Department of ${courseInfo.field}`;
-
-  const departmentCode = isPg
-    ? courseInfo.abbr === 'MCA'
-      ? 'PGDCA'
-      : `PG-${courseInfo.abbr}`
-    : courseInfo.abbr === 'BCA'
-    ? 'UGDCA'
-    : `UG-${courseInfo.abbr}`;
-
-  let section = '';
-  if (isUg && /^\d+$/.test(rollDigits)) {
-    const rollNum = parseInt(rollDigits, 10);
-    const series = Math.floor(rollNum / 100);
-    if (series === 1) section = 'A';
-    else if (series === 2) section = 'B';
-    else if (series === 3) section = 'C';
-    else if (series === 4) section = 'D';
-    else section = 'A';
+  // Determine lookup code (sw + p -> psw MSW)
+  let lookupCode = courseCodeStr;
+  if (courseCodeStr === 'sw' && levelChar === 'p') {
+    lookupCode = 'psw';
   }
 
-  const currentYear = new Date().getFullYear();
-  const yearDiff = currentYear - batchYear + 1;
-  let yearRoman = 'II';
-  if (yearDiff <= 1) yearRoman = 'I';
-  else if (yearDiff === 2) yearRoman = 'II';
-  else if (yearDiff === 3) yearRoman = 'III';
-  else if (yearDiff >= 4) yearRoman = 'IV';
+  const courseInfo = DEPARTMENT_COURSE_MAP[lookupCode];
+  if (!courseInfo) return null;
+
+  // Active academic year calculation (e.g. 2026-2027)
+  const now = new Date();
+  const activeYearStart = now.getMonth() >= 5 ? now.getFullYear() : now.getFullYear() - 1;
+  const yearNumber = Math.max(1, activeYearStart - batchYear + 1);
+  const yearRoman = ROMAN_YEARS[yearNumber] || String(yearNumber);
+
+  // Section handling
+  let section = '';
+  if (courseInfo.multiBatch) {
+    section = SECTION_MAP[sectionDigit] || 'A';
+  }
 
   const className = section
-    ? `${yearRoman} ${courseInfo.abbr} ${section}`
-    : `${yearRoman} ${courseInfo.abbr}`;
+    ? `${yearRoman} ${courseInfo.displayCourse} ${section}`
+    : `${yearRoman} ${courseInfo.displayCourse}`;
+
+  const levelName = levelChar === 'p' ? 'Postgraduate' : levelChar === 'i' ? 'Integrated' : 'Undergraduate';
 
   return {
+    name: firstName,
     firstName,
     batchYear,
-    level: isPg ? 'Postgraduate' : 'Undergraduate',
-    courseName: courseInfo.abbr,
-    department,
-    departmentCode,
+    yearNumber,
+    year: yearRoman,
+    level: levelName,
+    courseName: courseInfo.displayCourse,
+    courseFullName: courseInfo.course,
+    department: courseInfo.department,
+    departmentCode: courseInfo.deptCode,
     section,
-    rollDigits,
+    rollNumber,
+    rollDigits: `${sectionDigit}${rollDigits}`,
+    studentId: rollDigits,
     className,
   };
 }
