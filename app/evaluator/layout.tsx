@@ -34,7 +34,7 @@ export default function EvaluatorLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!loggedIn || (currentRole && currentRole !== 'evaluator' && currentRole !== 'evaluation' && currentRole !== 'admin')) {
+  if (!loggedIn || (!hasDualRole && currentRole && currentRole !== 'evaluator' && currentRole !== 'evaluation' && currentRole !== 'admin')) {
     return (
       <LoadingScreen
         message="Redirecting to authorized portal..."

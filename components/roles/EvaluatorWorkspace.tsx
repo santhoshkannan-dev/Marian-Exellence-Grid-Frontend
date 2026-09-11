@@ -136,14 +136,28 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
       calculatedMarks = count * item.marks;
     }
 
+    const isManual = item.isManualEval || item.is_manual_eval || sub.isManualEval || sub.is_manual_eval;
+    if (isManual && item.type !== 'academic_grades' && !(item.rules_json && item.rules_json.subItems)) {
+      const input = window.prompt(`Enter marks for "${item.title}" (Manual Evaluation):`, String(sub.marks ?? sub.calculatedMarks ?? item.marks ?? 0));
+      if (input === null) return;
+      const parsed = parseFloat(input);
+      if (isNaN(parsed) || parsed < 0) {
+        toast.error("Please enter a valid non-negative number for marks.");
+        return;
+      }
+      calculatedMarks = parsed;
+    }
+
     const evaluatorName = currentUserInfo?.name || 'Evaluation Team';
 
     updateSubmission(subId, {
       status: 'Evaluated',
       evaluatorVerified: true,
       evaluatorVerifiedByName: evaluatorName,
-      evaluatorRemarks: 'Verified and auto-evaluated based on dynamic criteria rules.',
-      marks: calculatedMarks
+      evaluatorRemarks: isManual ? `Manually evaluated: awarded ${calculatedMarks} marks.` : 'Verified and auto-evaluated based on dynamic criteria rules.',
+      marks: calculatedMarks,
+      calculated_marks: calculatedMarks,
+      calculatedMarks: calculatedMarks
     });
 
     toast.success(`Submission successfully verified and assigned ${calculatedMarks} marks!`);

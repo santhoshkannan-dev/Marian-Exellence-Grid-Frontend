@@ -83,6 +83,8 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       const id = String(cat.id || '').toLowerCase().trim();
 
       const isRestrictedForNormalStudent =
+        cat.accessLevel === 'student_rep_only' ||
+        cat.access_level === 'student_rep_only' ||
         name === 'academics' ||
         code === 'cat-academics' ||
         id === 'cat-academics' ||
@@ -96,7 +98,17 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         id === 'cat-programs-organized' ||
         id === '9' ||
         id === '900' ||
-        id === 'cat-9';
+        id === 'cat-9' ||
+        name === 'leaderships' ||
+        name === 'leadership' ||
+        code === 'cat-leadership' ||
+        id === 'cat-leadership' ||
+        id === '10' ||
+        name === 'social responsibilities' ||
+        name === 'social responsibility' ||
+        code === 'cat-social-responsibility' ||
+        id === 'cat-social-responsibility' ||
+        id === '11';
 
       return !isRestrictedForNormalStudent;
     });
@@ -310,27 +322,43 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     const itemTitle = String(currentItem.title || '').toLowerCase().trim();
 
     if (itemTitle.includes('outside')) {
-      return [
+      const allOutsideItems = [
         '1st Prize (Individual)',
         '2nd Prize (Individual)',
         '3rd Prize (Individual)',
-        '1st Prize (Group)',
-        '2nd Prize (Group)',
-        '3rd Prize (Group)',
-        'Participation (Individual)',
-        'Participation (Group)'
+        '1st Prize (group)',
+        '2nd Prize (group)',
+        '3rd Prize (group)',
+        'participation(Individual)',
+        'participation(group)'
+      ];
+      if (isDqc) {
+        return allOutsideItems;
+      }
+      return [
+        '1st Prize (Individual)',
+        '2nd Prize (Individual)',
+        '3rd Prize (Individual)'
       ];
     }
 
-    return [
+    const allFromMarianItems = [
       '1st Prize (Individual)',
       '2nd Prize (Individual)',
       '3rd Prize (Individual)',
-      '1st Prize (Group)',
-      '2nd Prize (Group)',
-      '3rd Prize (Group)'
+      '1st Prize (group)',
+      '2nd Prize (group)',
+      '3rd Prize (group)'
     ];
-  }, [isPrizesCategory, currentItem]);
+    if (isDqc) {
+      return allFromMarianItems;
+    }
+    return [
+      '1st Prize (Individual)',
+      '2nd Prize (Individual)',
+      '3rd Prize (Individual)'
+    ];
+  }, [isPrizesCategory, currentItem, isDqc]);
 
   const dynamicSubItems = React.useMemo(() => {
     if (currentItem?.rules_json?.subItems && typeof currentItem.rules_json.subItems === 'object') {
@@ -1017,9 +1045,14 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       }
     }
 
-    if (isPrizes && status === 'Submitted') {
-      if (!prizesSubItem) {
+    if (isPrizes) {
+      if (status === 'Submitted' && !prizesSubItem) {
         toast.error("Please select a Sub Item for the Prize activity before submitting.");
+        return;
+      }
+      const prizeLower = (prizesSubItem || '').toLowerCase();
+      if ((prizeLower.includes('group') || prizeLower.includes('participat')) && !isDqc) {
+        toast.error("Group prizes and participation in Prizes criteria are restricted to DQC Student Representatives only.");
         return;
       }
     }
@@ -2068,11 +2101,23 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                           onChange={(e) => setPrizesSubItem(e.target.value)}
                           required
                         >
-                          {availablePrizesSubItems.map((subOpt) => (
-                            <option key={subOpt} value={subOpt}>
-                              {subOpt}
-                            </option>
-                          ))}
+                          {availablePrizesSubItems.map((subOpt) => {
+                            let markVal = currentItem?.rules_json?.subItems?.[subOpt];
+                            if (markVal === undefined && currentItem?.rules_json?.subItems) {
+                              const subNorm = subOpt.toLowerCase().trim();
+                              for (const [k, v] of Object.entries(currentItem.rules_json.subItems)) {
+                                if (k.toLowerCase().trim() === subNorm) {
+                                  markVal = v as number;
+                                  break;
+                                }
+                              }
+                            }
+                            return (
+                              <option key={subOpt} value={subOpt}>
+                                {subOpt}{markVal !== undefined ? ` (${markVal} marks)` : ''}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
                     </div>

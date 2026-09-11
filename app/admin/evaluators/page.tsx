@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import { LoadingButton } from '@/components/loading';
 
 export default function EvaluatorManagementPage() {
-  const { criteriaCatalog, userGroups, assignEvaluatorsToCategory } = useApp();
+  const { criteriaCatalog, userGroups, assignEvaluatorsToCategory, fetchCriteriaCatalog } = useApp();
 
   // Local state for category assignments
   // categoryAssignments[categoryId] = [evaluatorEmails...]
@@ -51,6 +51,9 @@ export default function EvaluatorManagementPage() {
       // Execute saves sequentially for all categories in state
       for (const [categoryId, evaluators] of Object.entries(categoryAssignments)) {
         await assignEvaluatorsToCategory(categoryId, evaluators);
+      }
+      if (fetchCriteriaCatalog) {
+        await fetchCriteriaCatalog();
       }
       toast.success('Changes saved successfully to the database!');
     } catch (e) {

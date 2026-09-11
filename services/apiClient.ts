@@ -154,6 +154,14 @@ async function request<T = any>(endpoint: string, options: RequestOptions = {}):
     }
   }
 
+  // Auto attach X-Role-Context if active role is selected
+  if (typeof window !== 'undefined') {
+    const activeRole = localStorage.getItem('marian_active_role');
+    if (activeRole && !headers.has('X-Role-Context')) {
+      headers.set('X-Role-Context', activeRole);
+    }
+  }
+
   // Determine body format
   let finalBody: BodyInit | null | undefined = undefined;
   if (body !== undefined && body !== null) {
@@ -174,6 +182,7 @@ async function request<T = any>(endpoint: string, options: RequestOptions = {}):
 
   try {
     const res = await fetch(url, {
+      credentials: 'include',
       ...fetchOptions,
       headers,
       body: finalBody,

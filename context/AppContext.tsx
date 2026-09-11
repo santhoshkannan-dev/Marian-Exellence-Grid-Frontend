@@ -30,7 +30,7 @@ export type { SubmissionContextType } from '@/context/SubmissionContext';
 export { useRankings } from '@/context/RankingContext';
 export type { ClassIndexEntry, RankingContextType } from '@/context/RankingContext';
 
-import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AuthProvider, useAuth, CurrentUserInfo } from '@/context/AuthContext';
 import { CriteriaProvider, useCriteria, Course } from '@/context/CriteriaContext';
 import { SubmissionProvider, useSubmissions } from '@/context/SubmissionContext';
 import { RankingProvider, useRankings, ClassIndexEntry } from '@/context/RankingContext';
@@ -52,19 +52,7 @@ export interface AppContextType {
   students: Student[];
   userGroups: UserGroup[];
   jwtToken: string | null;
-  currentUserInfo: {
-    id: number;
-    email: string;
-    name: string;
-    role: string;
-    department: string | null;
-    department_code: string | null;
-    class_name: string | null;
-    picture?: string;
-    badge?: string | null;
-    has_dual_role?: boolean;
-    available_roles?: string[];
-  } | null;
+  currentUserInfo: CurrentUserInfo | null;
   hasDualRole: boolean;
   availableRoles: string[];
   switchRole: (role: 'teacher' | 'evaluator') => void;
@@ -136,6 +124,8 @@ export interface AppContextType {
   fetchClassIndex: (year?: string) => Promise<void>;
   updateClassModeration: (classId: number, numStudents: number, negativePoints: number) => Promise<void>;
   updateSmallestClassSize: (n: number) => Promise<void>;
+  fetchClasses: () => Promise<void>;
+  fetchUsersAndGroups: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -258,6 +248,33 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
     fetchSettingsAndYears();
     fetchUsersAndGroups();
   }, [fetchSettingsAndYears, fetchUsersAndGroups]);
+
+  // Re-fetch all domain datasets when user logs in or auth token changes
+  useEffect(() => {
+    if (auth.loggedIn || auth.jwtToken) {
+      fetchSettingsAndYears();
+      fetchUsersAndGroups();
+      criteria.fetchClasses();
+      submission.fetchSubmissions();
+      ranking.fetchClassIndex(activeAcademicYear || undefined);
+    }
+  }, [auth.loggedIn, auth.jwtToken, auth.currentUserInfo?.id, fetchSettingsAndYears, fetchUsersAndGroups, criteria.fetchClasses, submission.fetchSubmissions, ranking.fetchClassIndex, activeAcademicYear]);
+
+  // Also listen for auth:login-success custom event
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onAuthSuccess = () => {
+      fetchSettingsAndYears();
+      fetchUsersAndGroups();
+      criteria.fetchClasses();
+      submission.fetchSubmissions();
+      ranking.fetchClassIndex(activeAcademicYear || undefined);
+    };
+    window.addEventListener('auth:login-success', onAuthSuccess);
+    return () => {
+      window.removeEventListener('auth:login-success', onAuthSuccess);
+    };
+  }, [fetchSettingsAndYears, fetchUsersAndGroups, criteria.fetchClasses, submission.fetchSubmissions, ranking.fetchClassIndex, activeAcademicYear]);
 
   const setAcademicYear = useCallback((year: string) => {
     setSelectedAcademicYear(year);
@@ -580,6 +597,8 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
       deleteAcademicYearGlobal,
       setActiveAcademicYearGlobal,
       addUserGlobal,
+      fetchClasses: criteria.fetchClasses,
+      fetchUsersAndGroups,
     }),
     [
       auth,
@@ -615,6 +634,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
       deleteAcademicYearGlobal,
       setActiveAcademicYearGlobal,
       addUserGlobal,
+      fetchUsersAndGroups,
     ]
   );
 

@@ -30,6 +30,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
   const router = useRouter();
   const {
     submissions,
+    fetchSubmissions,
     updateSubmission,
     evaluationOpen,
     students,
@@ -40,7 +41,9 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     criteriaCatalog,
     currentUserInfo,
     classes,
+    fetchClasses,
     users,
+    fetchUsersAndGroups,
     classIndexData,
     fetchClassIndex,
     smallestClassSize,
@@ -49,12 +52,13 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
   const activeTab = view || activePage || 'dashboard';
 
-  // Fetch official moderated class index / rankings on mount & academic year change
+  // Fetch official moderated class index, submissions, classes, and users on mount & academic year change
   React.useEffect(() => {
-    if (fetchClassIndex) {
-      fetchClassIndex(activeAcademicYear || undefined);
-    }
-  }, [activeAcademicYear, fetchClassIndex]);
+    fetchClassIndex?.(activeAcademicYear || undefined);
+    fetchSubmissions?.();
+    fetchClasses?.();
+    fetchUsersAndGroups?.();
+  }, [activeAcademicYear, fetchClassIndex, fetchSubmissions, fetchClasses, fetchUsersAndGroups]);
 
   // ----------------------------------------------------
   // QUEUE, MODAL & TOAST STATE
@@ -114,22 +118,68 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
   // ----------------------------------------------------
   // CLASS STUDENTS & CLASS SUBMISSIONS
   // ----------------------------------------------------
-  // Helper to check if two class names match
-  const isSameClass = (c1?: string, c2?: string) => {
-    if (!c1 || !c2) return true;
-    const norm1 = c1.toLowerCase().replace(/^(i|ii|iii|\d+)\s+/, '').trim();
-    const norm2 = c2.toLowerCase().replace(/^(i|ii|iii|\d+)\s+/, '').trim();
-    return norm1 === norm2 || c1.toLowerCase().trim() === c2.toLowerCase().trim();
+  // Helper to check if two class names match (exact case/spacing normalized, preserves Roman numerals)
+  const isSameClass = (c1?: string, c2?: string): boolean => {
+    if (!c1 || !c2) return false;
+    const clean1 = c1.trim().toLowerCase().replace(/\s+/g, ' ');
+    const clean2 = c2.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (clean1 === clean2) return true;
+
+    // Handle common punctuation differences like "II-MCA" vs "II MCA" or "B.Sc" vs "BSc"
+    const normPunct = (s: string) => s.replace(/[-_.]/g, ' ').replace(/\s+/g, ' ').trim();
+    return normPunct(clean1) === normPunct(clean2);
   };
 
   const classByTeacherEmail = classes?.find((c: any) =>
     (c.classTeacher && currentUserInfo?.email && c.classTeacher.toLowerCase() === currentUserInfo.email.toLowerCase()) ||
     (c.classTeacherEmail && currentUserInfo?.email && c.classTeacherEmail.toLowerCase() === currentUserInfo.email.toLowerCase())
   );
-  const rawClass = (currentUserInfo as any)?.class_name_display || (currentUserInfo as any)?.className || (currentUserInfo as any)?.class_name || classByTeacherEmail?.name;
-  const teacherClass = (typeof rawClass === 'string' && isNaN(Number(rawClass))) ? rawClass : (classByTeacherEmail?.name || 'II MCA');
-  const teacherClassObject = classes?.find((c: any) => c.name === teacherClass) || classByTeacherEmail;
-  const teacherDepartment = teacherClassObject?.department || currentUserInfo?.department || 'PG Department of Computer Applications';
+
+  const rawAssignedClass =
+    currentUserInfo?.assigned_class?.name ||
+    (currentUserInfo as any)?.class_name_display ||
+    (currentUserInfo as any)?.className ||
+    (currentUserInfo as any)?.class_name ||
+    classByTeacherEmail?.name ||
+    '';
+
+  const teacherClass = (typeof rawAssignedClass === 'string' && isNaN(Number(rawAssignedClass)))
+    ? rawAssignedClass.trim()
+    : (classByTeacherEmail?.name || '');
+
+  const matchedCatalogClass = classes?.find((c: any) => isSameClass(c.name, teacherClass)) || classByTeacherEmail;
+
+  // teacherClassObject merges currentUserInfo.assigned_class (from auth/user profile) with matching catalog class
+  const teacherClassObject = currentUserInfo?.assigned_class
+    ? {
+        ...matchedCatalogClass,
+        ...currentUserInfo.assigned_class,
+        name: currentUserInfo.assigned_class.name || matchedCatalogClass?.name || teacherClass,
+        department: currentUserInfo.assigned_class.department || matchedCatalogClass?.department,
+        num_students: currentUserInfo.assigned_class.num_students ?? matchedCatalogClass?.num_students,
+        class_teacher_name: currentUserInfo.assigned_class.class_teacher_name || matchedCatalogClass?.classTeacherName || currentUserInfo?.name,
+        dqc_member_name: currentUserInfo.assigned_class.dqc_member_name || matchedCatalogClass?.dqcMemberName,
+      }
+    : (matchedCatalogClass || null);
+
+  const teacherDepartment =
+    teacherClassObject?.department ||
+    currentUserInfo?.department ||
+    'PG Department of Computer Applications';
+
+  const advisorName =
+    teacherClassObject?.class_teacher_name ||
+    teacherClassObject?.classTeacherName ||
+    (teacherClassObject as any)?.class_teacher ||
+    currentUserInfo?.name ||
+    'Faculty Advisor';
+
+  const dqcRepName =
+    teacherClassObject?.dqc_member_name ||
+    teacherClassObject?.dqcMemberName ||
+    (teacherClassObject as any)?.dqc_member ||
+    (teacherClassObject as any)?.dqcMember ||
+    '';
 
   // Base list of students belonging to this teacher's class
   const realStudents = users.filter(u => u.role === 'student').map(u => ({
@@ -139,15 +189,43 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     email: u.email
   }));
 
-  const classStudents = realStudents.filter((student) => {
-    if (student.className && teacherClass && !isSameClass(student.className, teacherClass)) {
-      return false;
+  // Also harvest any students directly present in submissions for this class
+  const submissionStudents = submissions
+    .filter(s => isSameClass(s.className, teacherClass) || (teacherClassObject?.id && (s.classId === teacherClassObject.id || (s as any).class_id === teacherClassObject.id)))
+    .map(s => ({
+      id: s.studentId || (s as any).student_id || 0,
+      name: (s as any).user_name || (s as any).userEmail?.split('@')[0] || (s as any).user_email?.split('@')[0] || `Student ${s.studentId}`,
+      className: s.className || teacherClass,
+      email: (s as any).user_email || (s as any).userEmail || ''
+    }))
+    .filter(s => s.id > 0);
+
+  const classStudentsMap = new Map<number, { id: number; name: string; className: string; email: string }>();
+  realStudents.forEach(st => {
+    if (isSameClass(st.className, teacherClass)) {
+      classStudentsMap.set(st.id, st);
     }
-    return true;
+  });
+  submissionStudents.forEach(st => {
+    if (!classStudentsMap.has(st.id)) {
+      classStudentsMap.set(st.id, st);
+    }
   });
 
+  const classStudents = Array.from(classStudentsMap.values());
   const classStudentIds = new Set(classStudents.map(s => s.id));
-  const classSubmissions = submissions.filter(s => classStudentIds.has(s.studentId));
+  const classStudentEmails = new Set(classStudents.map(s => s.email.toLowerCase()).filter(Boolean));
+
+  // Submissions belonging to this class
+  const classSubmissions = submissions.filter(s => {
+    if (s.studentId && classStudentIds.has(s.studentId)) return true;
+    if ((s as any).student_id && classStudentIds.has((s as any).student_id)) return true;
+    const subEmail = ((s as any).user_email || (s as any).userEmail || '').toLowerCase();
+    if (subEmail && classStudentEmails.has(subEmail)) return true;
+    if (s.className && teacherClass && isSameClass(s.className, teacherClass)) return true;
+    if (teacherClassObject?.id && (s.classId === teacherClassObject.id || (s as any).class_id === teacherClassObject.id)) return true;
+    return false;
+  });
 
   // Match class in official Class Index / Moderation data
   const matchingClassIndexEntry = React.useMemo(() => {
@@ -294,27 +372,46 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
   // Recent Student Progress list with Recently Submitted Document
   let displayProgressStudents = classStudents.map(student => {
-    const studentSubs = classSubmissions.filter(s => s.studentId === student.id);
+    const studentSubs = classSubmissions.filter(s => {
+      if (s.studentId === student.id || (s as any).student_id === student.id) return true;
+      const subEmail = ((s as any).user_email || (s as any).userEmail || '').toLowerCase();
+      if (subEmail && student.email && subEmail === student.email.toLowerCase()) return true;
+      return false;
+    });
+
     const verifiedPoints = studentSubs.filter(s => ['Approved', 'Verified', 'Evaluated', 'Locked'].includes(s.status)).reduce((sum, s) => {
        return sum + getSubmissionPoints(s);
     }, 0);
     const percent = Math.min(100, Math.round((verifiedPoints / 20) * 100)); // Target 20 per student
-    const recentSub = studentSubs.length > 0 ? studentSubs[studentSubs.length - 1] : null;
+
+    // Sort student's submissions descending by date / ID
+    const sortedStudentSubs = [...studentSubs].sort((a, b) => {
+      const dateA = a.submissionDate || a.submission_date || '';
+      const dateB = b.submissionDate || b.submission_date || '';
+      if (dateA && dateB && dateA !== dateB) return dateB.localeCompare(dateA);
+      return (b.id || 0) - (a.id || 0);
+    });
+
+    const recentSub = sortedStudentSubs.length > 0 ? sortedStudentSubs[0] : null;
 
     let recentDoc = '';
     let recentActivity = '';
     if (recentSub) {
-       recentDoc = recentSub.proof && isNaN(Number(recentSub.proof)) && recentSub.proof.length > 2 ? recentSub.proof : `Proof_${recentSub.id}.pdf`;
+       const docRaw = recentSub.proof || recentSub.proofUrl || (recentSub as any).proof_url || '';
+       if (docRaw && isNaN(Number(docRaw)) && docRaw.length > 2) {
+         recentDoc = docRaw.split('/').pop() || docRaw;
+       } else {
+         recentDoc = `Proof_Sub#${recentSub.id}.pdf`;
+       }
        const criteriaItem = criteriaCatalog.flatMap((c) => c.items).find((it) => String(it.id) === String(recentSub.criteriaId));
-       recentActivity = criteriaItem?.title || recentSub.description || 'Activity';
+       recentActivity = criteriaItem?.title || recentSub.description || 'Verified Claim';
     }
 
     // Build category-wise submission counts
     const categoryCountMap: Record<string, { submitted: number; approved: number }> = {};
     studentSubs.forEach(sub => {
       const catEntry = criteriaCatalog.find(c => c.items.some(it => String(it.id) === String(sub.criteriaId)));
-      if (!catEntry) return;
-      const cat = catEntry.category;
+      const cat = catEntry ? catEntry.category : ((sub as any).categoryName || (sub as any).category || 'Academics');
       if (!categoryCountMap[cat]) categoryCountMap[cat] = { submitted: 0, approved: 0 };
       categoryCountMap[cat].submitted += 1;
       if (['Approved', 'Verified', 'Evaluated', 'Locked'].includes(sub.status)) {
@@ -328,7 +425,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     return {
       id: student.id,
       name: student.name,
-      recentDoc: recentDoc || 'No submissions yet',
+      recentDoc: recentDoc || '',
       recentActivity: recentActivity || '-',
       percent,
       lastActivityId: recentSub ? recentSub.id : 0,
@@ -336,17 +433,26 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
       totalSubs: studentSubs.length,
       ...getProgressDetails(percent)
     };
-  }).filter(s => s.recentDoc !== 'No submissions yet');
+  });
 
-  // Sort by most recent activity
-  displayProgressStudents.sort((a, b) => b.lastActivityId - a.lastActivityId);
+  // Sort by most recent activity descending, then alphabetically
+  displayProgressStudents.sort((a, b) => {
+    if (b.lastActivityId !== a.lastActivityId) {
+      return b.lastActivityId - a.lastActivityId;
+    }
+    return a.name.localeCompare(b.name);
+  });
 
   // Filter by dashboard search
   if (dashboardStudentSearch.trim()) {
-    displayProgressStudents = displayProgressStudents.filter(s => s.name.toLowerCase().includes(dashboardStudentSearch.toLowerCase()));
+    displayProgressStudents = displayProgressStudents.filter(s =>
+      s.name.toLowerCase().includes(dashboardStudentSearch.toLowerCase()) ||
+      s.recentDoc.toLowerCase().includes(dashboardStudentSearch.toLowerCase())
+    );
   } else {
-    // Only show top 5 when not searching
-    displayProgressStudents = displayProgressStudents.slice(0, 5);
+    // If some students have submissions, prioritize showing them first
+    const withSubs = displayProgressStudents.filter(s => s.totalSubs > 0);
+    displayProgressStudents = withSubs.length > 0 ? withSubs.slice(0, 6) : displayProgressStudents.slice(0, 6);
   }
 
   // Merge pending submissions with friendly filenames
@@ -599,7 +705,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     addStudent({
       name: newStudentName,
       email: newStudentEmail,
-      className: teacherClass || 'BSc CS A'
+      className: teacherClass || 'Assigned Class'
     });
 
     setNewStudentName('');
@@ -610,8 +716,8 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
   const handleCSVUpload = (e: React.FormEvent) => {
     e.preventDefault();
     toast.success('Simulated Import: 3 students parsed from CSV and added successfully!');
-    addStudent({ name: 'Bhavya Sharma', className: 'BSc CS A' });
-    addStudent({ name: 'Chitra Sharma', className: 'BSc CS A' });
+    addStudent({ name: 'Bhavya Sharma', className: teacherClass || 'Assigned Class' });
+    addStudent({ name: 'Chitra Sharma', className: teacherClass || 'Assigned Class' });
     showToast('Students imported from CSV successfully.');
   };
 
@@ -854,7 +960,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                     Assigned Class
                   </span>
                   <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
-                    {teacherClass || 'BSc CS A'}
+                    {teacherClass || 'Assigned Class'}
                   </div>
                 </div>
 
@@ -1009,41 +1115,156 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
         {/* ---------------------------------------------------- */}
         {activeTab === 'dashboard' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-            {/* Header Section */}
-            <div>
-              <h1 style={{ fontSize: '2.1rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: '4px' }}>
-                Teacher Dashboard
-              </h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '4px' }}>
-                <span style={{ fontSize: '1rem', color: '#475569', fontWeight: 600 }}>
-                  Class Performance: <strong>{teacherClass || 'BSc CS A'}</strong>
-                </span>
-                {classRank && (
+            {/* Header / Assigned Class Overview Banner */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1e293b 100%)',
+                borderRadius: '24px',
+                padding: '28px 32px',
+                color: '#ffffff',
+                boxShadow: '0 10px 30px rgba(30, 27, 75, 0.25)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '24px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Background ambient glow circles */}
+              <div style={{
+                position: 'absolute',
+                top: '-40px',
+                right: '180px',
+                width: '200px',
+                height: '200px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%)',
+                pointerEvents: 'none'
+              }} />
+
+              {/* Left Column: Class Info & Metadata */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1, maxWidth: '680px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <span style={{
-                    fontSize: '0.78rem',
+                    fontSize: '0.72rem',
                     fontWeight: 800,
-                    color: classRank <= 3 ? '#92400e' : '#1e40af',
-                    background: classRank <= 3 ? '#fef3c7' : '#eff6ff',
-                    padding: '2px 10px',
-                    borderRadius: '12px',
-                    border: `1px solid ${classRank <= 3 ? '#fde68a' : '#bfdbfe'}`
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    backdropFilter: 'blur(8px)',
+                    color: '#e0e7ff',
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)'
                   }}>
-                    {classRank === 1 ? '🥇 Rank #1' : classRank === 2 ? '🥈 Rank #2' : classRank === 3 ? '🥉 Rank #3' : `Rank #${classRank}`}
+                    Assigned Class Overview
                   </span>
-                )}
-                <span style={{
-                  fontSize: '0.78rem',
-                  fontWeight: 800,
-                  color: '#5b21b6',
-                  background: '#ede9fe',
-                  padding: '2px 10px',
-                  borderRadius: '12px',
-                  border: '1px solid #ddd6fe'
+                  <span style={{
+                    fontSize: '0.76rem',
+                    fontWeight: 600,
+                    color: '#a5b4fc'
+                  }}>
+                    {teacherDepartment}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
+                  <h1 style={{
+                    fontSize: '2.4rem',
+                    fontWeight: 900,
+                    letterSpacing: '-0.02em',
+                    margin: 0,
+                    color: '#ffffff',
+                    lineHeight: 1.1
+                  }}>
+                    {teacherClass || 'Assigned Class'}
+                  </h1>
+                  {classRank && (
+                    <span style={{
+                      fontSize: '0.85rem',
+                      fontWeight: 800,
+                      color: classRank <= 3 ? '#fbbf24' : '#93c5fd',
+                      background: classRank <= 3 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                      padding: '4px 14px',
+                      borderRadius: '16px',
+                      border: `1px solid ${classRank <= 3 ? 'rgba(245, 158, 11, 0.4)' : 'rgba(59, 130, 246, 0.4)'}`,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}>
+                      <span>{classRank === 1 ? '🥇' : classRank === 2 ? '🥈' : classRank === 3 ? '🥉' : '🏆'}</span>
+                      <span>College Rank #{classRank}</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Metadata Details */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '6px', fontSize: '0.84rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#c7d2fe' }}>
+                    <span>👥</span>
+                    <span>Enrolled: <strong>{classN} Students</strong></span>
+                  </div>
+                  <span style={{ color: 'rgba(255,255,255,0.25)' }}>•</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#c7d2fe' }}>
+                    <span>👨‍🏫</span>
+                    <span>Advisor: <strong>{advisorName}</strong></span>
+                  </div>
+                  {dqcRepName && (
+                    <>
+                      <span style={{ color: 'rgba(255,255,255,0.25)' }}>•</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#c7d2fe' }}>
+                        <span>🛡️</span>
+                        <span>DQC Rep: <strong>{dqcRepName}</strong></span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Formula M Index Card */}
+              <div
+                style={{
+                  zIndex: 1,
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(12px)',
+                  borderRadius: '18px',
+                  padding: '16px 24px',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '20px'
                 }}
                 title={scoreHoverOnlyText}
+              >
+                <div>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Formula M Index
+                  </div>
+                  <div style={{ fontSize: '1.9rem', fontWeight: 900, color: '#ffffff', marginTop: '2px', lineHeight: 1 }}>
+                    {moderatedM.toFixed(4)}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '4px' }}>
+                    Evaluated S: {classS.toFixed(0)} pts
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '14px',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.3rem',
+                    boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)'
+                  }}
                 >
-                  M (Index): {moderatedM.toFixed(4)}
-                </span>
+                  ⚖️
+                </div>
               </div>
             </div>
 
@@ -1434,9 +1655,26 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                           {s.name.charAt(0).toUpperCase()}
                         </div>
 
-                        {/* Name only */}
+                        {/* Name and Recent Document info */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '0.94rem', fontWeight: 700, color: '#0f172a' }}>{s.name}</div>
+                          {s.recentDoc ? (
+                            <div style={{ fontSize: '0.75rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', overflow: 'hidden' }}>
+                              <span style={{ color: '#4f46e5', fontSize: '0.8rem' }}>📄</span>
+                              <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }} title={s.recentDoc}>
+                                {s.recentDoc}
+                              </span>
+                              {s.recentActivity && s.recentActivity !== '-' && (
+                                <span style={{ color: '#94a3b8', fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  • {s.recentActivity}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '0.74rem', color: '#94a3b8', fontStyle: 'italic', marginTop: '2px' }}>
+                              No submissions yet
+                            </div>
+                          )}
                         </div>
 
                         {/* Percent label */}
@@ -1502,6 +1740,28 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                       )}
                     </div>
                   ))}
+
+                  {displayProgressStudents.length === 0 && (
+                    <div style={{
+                      textAlign: 'center',
+                      padding: '40px 20px',
+                      background: '#f8fafc',
+                      borderRadius: '16px',
+                      border: '1px dashed #cbd5e1',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <div style={{ fontSize: '2rem' }}>📂</div>
+                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.96rem' }}>
+                        No Student Activity Yet
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', maxWidth: '320px' }}>
+                        Submissions from students in {teacherClass || 'your assigned class'} will show up here automatically.
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Bottom Quick Assistant / Grade Distribution bar matching screenshot */}
@@ -2371,7 +2631,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                           <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                             <td style={{ fontWeight: 700, padding: '12px 14px', color: '#0f172a' }}>{s.name}</td>
                             <td style={{ padding: '12px 14px', color: '#64748b' }}>{studentEmail}</td>
-                            <td style={{ padding: '12px 14px', color: '#475569' }}>{s.className || 'BSc CS A'}</td>
+                            <td style={{ padding: '12px 14px', color: '#475569' }}>{s.className || teacherClass || 'Assigned Class'}</td>
                             <td style={{ padding: '12px 14px' }}>
                               <button
                                 onClick={() => deleteStudent(s.id)}
@@ -2595,7 +2855,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.88rem', color: '#64748b' }}>Assigned Class</span>
                   <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>
-                    {teacherClass || 'BSc CS A'}
+                    {teacherClass || 'Assigned Class'}
                   </span>
                 </div>
               </div>

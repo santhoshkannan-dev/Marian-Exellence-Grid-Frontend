@@ -12,6 +12,18 @@ export interface CurrentUserInfo {
   department: string | null;
   department_code: string | null;
   class_name: string | null;
+  assigned_class?: {
+    id: number;
+    name: string;
+    department?: string | null;
+    department_code?: string | null;
+    num_students?: number;
+    negative_points?: number;
+    class_teacher?: string | null;
+    class_teacher_name?: string | null;
+    dqc_member?: string | null;
+    dqc_member_name?: string | null;
+  } | null;
   picture?: string;
   badge?: string | null;
   has_dual_role?: boolean;
@@ -182,9 +194,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
 
   const updateCurrentUserInfo = useCallback((userData: any) => {
-    let department = userData.department || null;
-    let departmentCode = userData.department_code || null;
-    let className = userData.class_name || null;
+    let department = userData.department || (userData.assigned_class ? userData.assigned_class.department : null);
+    let departmentCode = userData.department_code || (userData.assigned_class ? userData.assigned_class.department_code : null);
+    let className = userData.class_name || (userData.assigned_class ? userData.assigned_class.name : null);
 
     if (userData.role === 'student' && (!department || !className)) {
       const parsed = parseStudentEmail(userData.email);
@@ -195,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    const dual = Boolean(userData.has_dual_role);
+    const dual = Boolean(userData.has_dual_role) || (Array.isArray(userData.available_roles) && userData.available_roles.includes('teacher') && userData.available_roles.includes('evaluator'));
     setHasDualRole(dual);
     setAvailableRoles(userData.available_roles || [mapBackendRoleToFrontend(userData.role)]);
 
@@ -216,6 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       department,
       department_code: departmentCode,
       class_name: className,
+      assigned_class: userData.assigned_class || null,
       picture: userData.picture,
       badge: userData.badge || null,
       has_dual_role: dual,
@@ -245,6 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       apiClient.clearTokens();
       if (typeof window !== 'undefined') {
+        localStorage.removeItem('marian_active_role');
         localStorage.removeItem('marian_best_class_state');
         localStorage.removeItem('bc_persistent_state');
         localStorage.removeItem('bc_persistent_state_v2');
@@ -278,8 +292,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (userData && userData.id) {
               updateCurrentUserInfo(userData);
               setLoggedIn(true);
-              setCurrentRole(mapBackendRoleToFrontend(userData.role));
+              const savedRole = typeof window !== 'undefined' ? localStorage.getItem('marian_active_role') : null;
+              const backendActiveRole = userData.active_role ? mapBackendRoleToFrontend(userData.active_role) : null;
+              const baseRole = mapBackendRoleToFrontend(userData.role);
+              const effectiveRole = (backendActiveRole && (userData.has_dual_role || userData.available_roles?.includes(backendActiveRole)))
+                ? backendActiveRole
+                : (savedRole && (userData.has_dual_role || userData.available_roles?.includes(savedRole)))
+                  ? savedRole
+                  : baseRole;
+              setCurrentRole(effectiveRole);
+              if (typeof window !== 'undefined' && effectiveRole) {
+                localStorage.setItem('marian_active_role', effectiveRole);
+              }
               setCurrentUserId(userData.id);
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('auth:login-success', { detail: { user: userData } }));
+              }
             }
           } catch (err: any) {
             console.warn('Initial session verification failed:', err.message);
@@ -303,8 +331,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentRole(role);
   }, []);
 
-  const switchRole = useCallback((newRole: 'teacher' | 'evaluator') => {
+  const switchRole = useCallback(async (newRole: 'teacher' | 'evaluator') => {
     setCurrentRole(newRole);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('marian_active_role', newRole);
+    }
+    try {
+      await apiClient.post('/auth/switch-role/', { role: newRole });
+    } catch (err: any) {
+      console.warn('Backend switch-role error:', err);
+    }
     if (typeof window !== 'undefined') {
       if (newRole === 'teacher') {
         window.location.href = '/teacher/dashboard';
@@ -337,6 +373,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         apiClient.setTokens(data.tokens.access, data.tokens.refresh);
 
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:login-success', { detail: { user: data.user } }));
+        }
+
         toast.success(`Logged in successfully! Welcome, ${data.user.name || data.user.first_name || 'User'}`);
         return { success: true, user: data.user };
       } catch (err: any) {
@@ -364,6 +404,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUserId(data.user.id);
 
         apiClient.setTokens(data.tokens.access, data.tokens.refresh);
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:login-success', { detail: { user: data.user } }));
+        }
 
         toast.success(`Logged in successfully as ${data.user.name || email}`);
         return { success: true, user: data.user };

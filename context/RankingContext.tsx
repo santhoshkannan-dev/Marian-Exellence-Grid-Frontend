@@ -93,9 +93,10 @@ export const RankingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, []);
 
-  // Fetch initial champions & settings on mount
+  // Fetch initial champions & settings on mount & listen to login success
   useEffect(() => {
     fetchChampions();
+    fetchClassIndex();
     apiClient
       .get('/settings/')
       .then((settings) => {
@@ -105,7 +106,17 @@ export const RankingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       })
       .catch(() => {});
-  }, [fetchChampions]);
+
+    if (typeof window === 'undefined') return;
+    const handleAuthChange = () => {
+      fetchChampions();
+      fetchClassIndex();
+    };
+    window.addEventListener('auth:login-success', handleAuthChange);
+    return () => {
+      window.removeEventListener('auth:login-success', handleAuthChange);
+    };
+  }, [fetchChampions, fetchClassIndex]);
 
   return (
     <RankingContext.Provider

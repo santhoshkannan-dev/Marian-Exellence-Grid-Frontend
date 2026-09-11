@@ -58,6 +58,7 @@ export interface CriteriaContextType {
   deleteDepartmentGlobal: (code: string) => Promise<void>;
   addClassGlobal: (name: string, deptCode: string) => Promise<void>;
   updateClassMapping: (name: string, teacherEmail: string, dqcEmail: string) => Promise<void>;
+  fetchClasses: () => Promise<void>;
 }
 
 const CriteriaContext = createContext<CriteriaContextType | undefined>(undefined);
@@ -125,12 +126,23 @@ export const CriteriaProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
-  // Initial fetch on mount
+  // Initial fetch on mount & listen to login success
   useEffect(() => {
     fetchCriteriaCatalog();
     fetchDepartments();
     fetchCourses();
     fetchClasses();
+
+    if (typeof window === 'undefined') return;
+    const handleAuthChange = () => {
+      fetchClasses();
+      fetchDepartments();
+      fetchCourses();
+    };
+    window.addEventListener('auth:login-success', handleAuthChange);
+    return () => {
+      window.removeEventListener('auth:login-success', handleAuthChange);
+    };
   }, [fetchCriteriaCatalog, fetchDepartments, fetchCourses, fetchClasses]);
 
   const addCriteriaCategory = useCallback(async (category: Omit<CriteriaCategory, 'id' | 'items'>) => {
@@ -279,6 +291,7 @@ export const CriteriaProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         await apiClient.put(`/criteria-categories/${categoryId}/`, { evaluators });
       } catch (e) {
         console.error('Failed to assign evaluators:', e);
+        throw e;
       }
     },
     []
@@ -503,6 +516,7 @@ export const CriteriaProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deleteDepartmentGlobal,
         addClassGlobal,
         updateClassMapping,
+        fetchClasses,
       }}
     >
       {children}

@@ -34,6 +34,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" href="/Assets/Images/hands_logo_zoomed.png" />
         <link rel="shortcut icon" href="/Assets/Images/hands_logo_zoomed.png" />
         <link rel="apple-touch-icon" href="/Assets/Images/hands_logo_zoomed.png" />
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body>
         <AppContextProvider>

@@ -34,7 +34,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  if (!loggedIn || (currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin')) {
+  if (!loggedIn || (!hasDualRole && currentRole && currentRole !== 'teacher' && currentRole !== 'faculty' && currentRole !== 'admin')) {
     return (
       <LoadingScreen
         message="Redirecting to authorized portal..."
