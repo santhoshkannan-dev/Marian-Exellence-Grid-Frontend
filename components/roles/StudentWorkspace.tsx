@@ -48,11 +48,18 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     activePage,
     setActivePage,
     isStudentRep,
+    isDqcMember,
     currentUserInfo,
     updateUserProfile,
     editingSubId,
     setEditingSubId
   } = useApp();
+
+  const isDqc = Boolean(
+    isDqcMember ||
+    currentUserInfo?.badge === 'DQC member' ||
+    (currentUserInfo as any)?.is_dqc_member
+  );
 
   const activeTab = view || activePage || 'dashboard';
 
@@ -61,13 +68,15 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     fetchSubmissions();
   }, [activeTab, fetchSubmissions]);
 
-  // Filter available categories based on role access (Normal Student: 10 student categories; Student Rep / DQC: All categories)
+  // Filter available categories based on role access:
+  // - Only DQC members have full access to class-level categories (Academics, Documentation & Programs Organized).
+  // - Normal students AND Student Representatives user group members only have access to limited student categories.
   const availableCriteriaCatalog = React.useMemo(() => {
-    if (isStudentRep) {
+    if (isDqc) {
       return criteriaCatalog;
     }
 
-    // Normal students get student-level categories (excluding Academics, Documentation & Programs Organized / class-wide audit categories)
+    // Normal students and Student Representatives get student-level categories (excluding Academics, Documentation & Programs Organized)
     return criteriaCatalog.filter((cat) => {
       const name = String(cat.category || '').toLowerCase().trim();
       const code = String(cat.code || '').toLowerCase().trim();
@@ -91,7 +100,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
 
       return !isRestrictedForNormalStudent;
     });
-  }, [criteriaCatalog, isStudentRep]);
+  }, [criteriaCatalog, isDqc]);
 
   const { activeAcademicYear } = useApp();
 
@@ -120,27 +129,29 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
 
     let items = currentCategory.items;
 
-    if (isCareerAdvancement && !isStudentRep) {
+    // Standard activity item limits apply to normal students and Student Representatives;
+    // only DQC members have unrestricted item selection for class activities.
+    if (isCareerAdvancement && !isDqc) {
       items = items.filter((i) =>
         String(i.title || '').toLowerCase().includes('linkedin')
       );
     }
 
-    if (isLeadership && !isStudentRep) {
+    if (isLeadership && !isDqc) {
       items = items.filter((i) => {
         const title = String(i.title || '').toLowerCase().trim();
         return !title.includes('innovative') && !title.includes('sustainable') && title !== 'any other';
       });
     }
 
-    if (isSocialResponsibility && !isStudentRep) {
+    if (isSocialResponsibility && !isDqc) {
       items = items.filter((i) =>
         String(i.title || '').toLowerCase().includes('participation')
       );
     }
 
     return items;
-  }, [currentCategory, isStudentRep]);
+  }, [currentCategory, isDqc]);
 
   const currentItem: CriteriaItem | undefined = React.useMemo(() => {
     if (!currentCategory || !availableCategoryItems || availableCategoryItems.length === 0) return undefined;
@@ -959,6 +970,16 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       currentCategory?.code === 'cat-prizes' ||
       currentCategory?.category.toLowerCase().trim().includes('prize');
 
+    const isDocumentation =
+      currentCategory?.id === 'cat-documentation' ||
+      currentCategory?.code === 'cat-documentation' ||
+      currentCategory?.category.toLowerCase().trim() === 'documentation';
+
+    if ((isAcademicCategory || isProgramsOrganized || isDocumentation) && !isDqc) {
+      toast.error("Submissions to this category are restricted to DQC members only.");
+      return;
+    }
+
     if (isAcademicCategory && existingAcademicSubmission && !editingSubId) {
       toast.warning(`"${academicSubmissionType}" has already been updated for this evaluation cycle. Only one submission per type is allowed.`);
       return;
@@ -1542,19 +1563,35 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                   marginBottom: '16px',
                   fontSize: '0.85rem',
                   fontWeight: 600,
-                  background: isStudentRep ? 'rgba(99, 102, 241, 0.08)' : 'rgba(234, 179, 8, 0.1)',
-                  border: isStudentRep ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid rgba(234, 179, 8, 0.25)',
-                  color: isStudentRep ? '#3730a3' : '#854d0e',
+                  background: isDqc
+                    ? 'rgba(99, 102, 241, 0.08)'
+                    : isStudentRep
+                    ? 'rgba(16, 185, 129, 0.08)'
+                    : 'rgba(234, 179, 8, 0.1)',
+                  border: isDqc
+                    ? '1px solid rgba(99, 102, 241, 0.2)'
+                    : isStudentRep
+                    ? '1px solid rgba(16, 185, 129, 0.25)'
+                    : '1px solid rgba(234, 179, 8, 0.25)',
+                  color: isDqc
+                    ? '#3730a3'
+                    : isStudentRep
+                    ? '#065f46'
+                    : '#854d0e',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px'
                 }}
               >
-                <span>{isStudentRep ? '⭐' : 'ℹ️'}</span>
+                <span>{isDqc ? '⭐' : isStudentRep ? '🎓' : 'ℹ️'}</span>
                 <div>
-                  {isStudentRep ? (
+                  {isDqc ? (
                     <>
-                      <strong>⭐ Student Representative / DQC Access:</strong> All {availableCriteriaCatalog.length} evaluation categories (including <em>Academics</em> and <em>Documentation</em>) are fully unlocked for class submissions.
+                      <strong>⭐ DQC Member Access:</strong> All {availableCriteriaCatalog.length} evaluation categories (including <em>Academics</em>, <em>Programs Organized</em>, and <em>Documentation</em>) are fully unlocked for class submissions.
+                    </>
+                  ) : isStudentRep ? (
+                    <>
+                      <strong>🎓 Student Representative Access:</strong> Standard student activity categories ({availableCriteriaCatalog.length} categories) are available for your submissions. You can verify your classmates' submissions in the <em>Class Verification</em> tab.
                     </>
                   ) : (
                     <>

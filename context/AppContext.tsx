@@ -98,6 +98,7 @@ export interface AppContextType {
   addUserGroup: (group: Omit<UserGroup, 'id'>) => void;
   deleteUserGroup: (groupId: string) => void;
   isStudentRep: boolean;
+  isDqcMember: boolean;
   toggleStudentRepMode: () => void;
   addUserToGroup: (groupId: string, email: string) => boolean;
   removeUserFromGroup: (groupId: string, email: string) => void;
@@ -489,6 +490,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
       currentUserInfo: auth.currentUserInfo,
       isInitialized: auth.isInitialized,
       isStudentRep: auth.isStudentRep,
+      isDqcMember: auth.isDqcMember,
       hasDualRole: auth.hasDualRole,
       availableRoles: auth.availableRoles,
       switchRole: auth.switchRole,

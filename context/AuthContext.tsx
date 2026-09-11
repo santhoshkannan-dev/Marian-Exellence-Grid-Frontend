@@ -153,6 +153,7 @@ export interface AuthContextType {
   currentUserInfo: CurrentUserInfo | null;
   isInitialized: boolean;
   isStudentRep: boolean;
+  isDqcMember: boolean;
   hasDualRole: boolean;
   availableRoles: string[];
   setRole: (role: string) => void;
@@ -176,6 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUserInfo, setCurrentUserInfo] = useState<CurrentUserInfo | null>(null);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [isStudentRep, setIsStudentRep] = useState<boolean>(false);
+  const [isDqcMember, setIsDqcMember] = useState<boolean>(false);
   const [hasDualRole, setHasDualRole] = useState<boolean>(false);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
 
@@ -196,8 +198,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const dual = Boolean(userData.has_dual_role);
     setHasDualRole(dual);
     setAvailableRoles(userData.available_roles || [mapBackendRoleToFrontend(userData.role)]);
-    if (userData.badge || userData.is_student_rep || userData.is_dqc_member) {
+
+    const isDqc = userData.badge === 'DQC member' || Boolean(userData.is_dqc_member);
+    const isRep = userData.badge === 'Student Rep' || Boolean(userData.is_student_rep);
+    setIsDqcMember(isDqc);
+    if (isDqc || isRep || Boolean(userData.badge)) {
       setIsStudentRep(true);
+    } else {
+      setIsStudentRep(false);
     }
 
     setCurrentUserInfo({
@@ -231,6 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUserInfo(null);
       setCurrentStudentId(1);
       setIsStudentRep(false);
+      setIsDqcMember(false);
       setHasDualRole(false);
       setAvailableRoles([]);
 
@@ -395,6 +404,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUserInfo,
         isInitialized,
         isStudentRep,
+        isDqcMember,
         hasDualRole,
         availableRoles,
         setRole,
