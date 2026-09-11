@@ -19,9 +19,9 @@ export const WorkflowTimeline: React.FC = () => {
     },
     {
       id: 2,
-      title: 'DQAC Member Verification',
+      title: 'DQC Member Verification',
       subtitle: 'Student Rep Audit',
-      desc: 'DQAC student representatives conduct initial verification of class and group achievement claims.'
+      desc: 'DQC student representatives conduct initial verification of class and group achievement claims.'
     },
     {
       id: 3,
