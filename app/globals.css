@@ -1053,13 +1053,20 @@ h1, h2, h3, h4, p {
 /* PORTAL LAYOUT STYLES           */
 /* ------------------------------ */
 .portal-shell-grid {
-  display: grid;
-  grid-template-columns: 260px 1fr;
+  display: block;
   min-height: 100vh;
   background: var(--bg-dark);
+  position: relative;
 }
 
 .portal-sidebar {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 260px;
+  height: 100vh !important;
+  max-height: 100vh;
   background: #ffffff;
   color: var(--text-main);
   padding: 24px 18px;
@@ -1068,9 +1075,19 @@ h1, h2, h3, h4, p {
   justify-content: space-between;
   border-right: 1.5px solid var(--glass-border);
   box-shadow: 4px 0 24px rgba(15, 23, 42, 0.04);
-  position: sticky;
-  top: 0;
-  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 100;
+  transition: width 0.3s ease, padding 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.portal-sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.portal-sidebar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .portal-brand {
@@ -1162,7 +1179,10 @@ h1, h2, h3, h4, p {
   flex-direction: column;
   position: relative;
   min-height: 100vh;
-  overflow: hidden;
+  margin-left: 260px;
+  width: calc(100% - 260px);
+  min-width: 0;
+  transition: margin-left 0.3s ease, width 0.3s ease;
 }
 
 .portal-topbar {
@@ -2950,6 +2970,7 @@ h1, h2, h3, h4, p {
 
   .portal-content-area {
     min-height: 100vh;
+    margin-left: 0 !important;
     padding-left: 0 !important;
     width: 100% !important;
   }
@@ -3110,28 +3131,16 @@ h1, h2, h3, h4, p {
 
 
 /* --------------------------------- */
-/* SIDEBAR COLLAPSE & STICKY STYLES   */
+/* SIDEBAR COLLAPSE & FIXED STYLES   */
 /* --------------------------------- */
-.portal-shell-grid {
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  min-height: 100vh;
-  transition: grid-template-columns 0.3s ease;
+.portal-shell-grid.collapsed .portal-sidebar {
+  width: 78px !important;
+  padding: 20px 10px !important;
 }
 
-.portal-shell-grid.collapsed {
-  grid-template-columns: 78px 1fr !important;
-}
-
-.portal-sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  max-height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  z-index: 100;
-  transition: width 0.3s ease, padding 0.3s ease;
+.portal-shell-grid.collapsed .portal-content-area {
+  margin-left: 78px !important;
+  width: calc(100% - 78px) !important;
 }
 
 .portal-sidebar.collapsed {

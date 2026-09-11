@@ -113,11 +113,11 @@ export const LandingPage: React.FC = () => {
     users,
     criteriaCatalog,
   } = useApp();
-  
+
   // Use the latest year available in championsData or fallback to '2025'
   const availableYears = Object.keys(championsData).sort((a, b) => parseInt(b) - parseInt(a));
   const initialYear = availableYears.length > 0 ? availableYears[0] : '2025';
-  
+
   const [activeYear, setActiveYear] = useState(initialYear);
   const [championFilterCategory, setChampionFilterCategory] = useState<'All' | 'UG' | 'PG'>('All');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -683,7 +683,7 @@ export const LandingPage: React.FC = () => {
           </div>
 
           {/* Header Action Navigation Buttons */}
-          <div className="header-actions-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* <div className="header-actions-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Link
               href="/policy"
               id="header-btn-policy"
@@ -717,7 +717,7 @@ export const LandingPage: React.FC = () => {
               </svg>
               <span>Portal Login</span>
             </Link>
-          </div>
+          </div> */}
         </div>
 
         {/* 1. Class Progress Gauge */}
@@ -918,12 +918,12 @@ export const LandingPage: React.FC = () => {
                       const icon = cat.category.toLowerCase().includes('research') || cat.category.toLowerCase().includes('publication')
                         ? '🔬'
                         : cat.category.toLowerCase().includes('course') || cat.category.toLowerCase().includes('mooc') || cat.category.toLowerCase().includes('cert')
-                        ? '📜'
-                        : cat.category.toLowerCase().includes('outreach') || cat.category.toLowerCase().includes('extension')
-                        ? '🤝'
-                        : cat.category.toLowerCase().includes('prize') || cat.category.toLowerCase().includes('competi') || cat.category.toLowerCase().includes('hackathon')
-                        ? '🏆'
-                        : '📚';
+                          ? '📜'
+                          : cat.category.toLowerCase().includes('outreach') || cat.category.toLowerCase().includes('extension')
+                            ? '🤝'
+                            : cat.category.toLowerCase().includes('prize') || cat.category.toLowerCase().includes('competi') || cat.category.toLowerCase().includes('hackathon')
+                              ? '🏆'
+                              : '📚';
 
                       return (
                         <div
@@ -1289,31 +1289,31 @@ export const LandingPage: React.FC = () => {
                     </div>
                   </div>
 
-                <div className="champion-avatar-frame">
-                  <img 
-                    src={champ.image?.startsWith('http') ? champ.image : (champ.image?.startsWith('/') ? `http://localhost:8000${champ.image}` : `http://localhost:8000${champ.image}`)} 
-                    alt={champ.teamName} 
-                    className="champion-avatar-img" 
-                    onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150'; }}
-                  />
-                </div>
+                  <div className="champion-avatar-frame">
+                    <img
+                      src={champ.image?.startsWith('http') ? champ.image : (champ.image?.startsWith('/') ? `http://localhost:8000${champ.image}` : `http://localhost:8000${champ.image}`)}
+                      alt={champ.teamName}
+                      className="champion-avatar-img"
+                      onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150'; }}
+                    />
+                  </div>
 
-                <h3 className="champion-team-name">{champ.teamName}</h3>
-                <div className="champion-event-name">{champ.eventName || champ.institution || 'Marian Excellence Grid'}</div>
+                  <h3 className="champion-team-name">{champ.teamName}</h3>
+                  <div className="champion-event-name">{champ.eventName || champ.institution || 'Marian Excellence Grid'}</div>
 
-                <div className={`champion-score-row rank-${champ.rank}`}>
-                  <span className="star-icon">★</span>
-                  <span>{champ.score}</span>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, marginLeft: '4px' }}>pts</span>
-                </div>
+                  <div className={`champion-score-row rank-${champ.rank}`}>
+                    <span className="star-icon">★</span>
+                    <span>{champ.score}</span>
+                    <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, marginLeft: '4px' }}>pts</span>
+                  </div>
 
-                <div className="champion-footer-pill">
-                  <div className="pill-item">
-                    <span>🏫 {champ.institution || 'Marian College'}</span>
+                  <div className="champion-footer-pill">
+                    <div className="pill-item">
+                      <span>🏫 {champ.institution || 'Marian College'}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )))}
+              )))}
           </div>
 
           {/* Bottom Bar */}

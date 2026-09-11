@@ -21,8 +21,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         const dest = (currentRole === 'student')
           ? '/student/dashboard'
           : (currentRole === 'teacher' || currentRole === 'faculty')
-          ? '/teacher/dashboard'
-          : '/evaluator/dashboard';
+            ? '/teacher/dashboard'
+            : '/evaluator/dashboard';
         router.push(dest);
       }
     }
@@ -229,7 +229,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <a
+            {/* <a
               href={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/api\/?$/, '')}/admin/`}
               target="_blank"
               rel="noopener noreferrer"
@@ -249,7 +249,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               }}
             >
               ⚙ Open Django Administration
-            </a>
+            </a> */}
             <span
               style={{
                 padding: '6px 18px',
