@@ -63,6 +63,10 @@ export const SubmissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, []);
 
+  React.useEffect(() => {
+    fetchSubmissions();
+  }, [fetchSubmissions]);
+
   const addSubmission = useCallback(
     async (newSub: Omit<Submission, 'id'>, academicYear?: string, userEmail?: string) => {
       const tempId = Date.now();

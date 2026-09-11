@@ -72,7 +72,7 @@ export interface AppContextType {
   setActivePage: (page: string) => void;
   setAcademicYear: (year: string) => void;
   fetchSubmissions: () => Promise<void>;
-  addSubmission: (newSub: Omit<Submission, 'id'>) => void;
+  addSubmission: (newSub: Omit<Submission, 'id'>, academicYear?: string, userEmail?: string) => void;
   updateSubmission: (id: number, updates: Partial<Submission>) => void;
   deleteSubmission: (id: number) => void;
   addCriteriaItem: (categoryId: string | number, item: Omit<CriteriaItem, 'id'>) => void;
@@ -461,9 +461,10 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
 
   // Submissions adapter for backward compatibility
   const addSubmissionAdapter = useCallback(
-    (newSub: Omit<Submission, 'id'>) => {
-      const userEmail = auth.currentUserInfo?.email || '';
-      submission.addSubmission(newSub, selectedAcademicYear, userEmail);
+    (newSub: Omit<Submission, 'id'>, academicYear?: string, userEmail?: string) => {
+      const email = userEmail || auth.currentUserInfo?.email || '';
+      const year = academicYear || selectedAcademicYear;
+      submission.addSubmission(newSub, year, email);
     },
     [auth.currentUserInfo, submission, selectedAcademicYear]
   );

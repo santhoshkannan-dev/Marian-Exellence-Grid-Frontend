@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { Submission, CriteriaItem } from '@/data/initialData';
+import { Submission, CriteriaItem, CriteriaCategory } from '@/data/initialData';
 import { toast } from 'react-toastify';
 import { CustomModal } from '@/components/CustomModal';
 
@@ -56,12 +56,10 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
 
   const activeTab = view || activePage || 'dashboard';
 
-  // Auto-fetch latest class submissions from backend when verification or submissions tab is active
+  // Auto-fetch latest class submissions from backend on mount and tab changes
   React.useEffect(() => {
-    if (activeTab === 'verification' || activeTab === 'submissions') {
-      fetchSubmissions();
-    }
-  }, [activeTab]);
+    fetchSubmissions();
+  }, [activeTab, fetchSubmissions]);
 
   // Filter available categories based on role access (Normal Student: 10 student categories; Student Rep / DQC: All categories)
   const availableCriteriaCatalog = React.useMemo(() => {
@@ -649,18 +647,146 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
   const totalChecklistPages = Math.ceil(availableCriteriaCatalog.length / checklistPageSize) || 1;
   const paginatedChecklist = availableCriteriaCatalog.slice((checklistPage - 1) * checklistPageSize, checklistPage * checklistPageSize);
 
-  // Category completion calculation
-  const completedCategoryIds = new Set<string>();
-  mySubmissions.forEach((sub) => {
-    if (['Approved', 'Verified', 'Student Rep Verified', 'Evaluated', 'Locked'].includes(sub.status)) {
-      const cat = availableCriteriaCatalog.find((c) => c.items.some((i) => i.id === sub.criteriaId));
-      if (cat) completedCategoryIds.add(cat.id);
-    }
-  });
+  // Helper to get all non-rejected submissions for a category
+  const getCategorySubmissions = React.useCallback(
+    (cat: CriteriaCategory) => {
+      const matchingCats = criteriaCatalog.filter((c) => matchCategory(c, cat.id || cat.code || cat.category));
+      const allItems = [...(cat.items || []), ...matchingCats.flatMap((c) => c.items || [])];
+      const itemIds = new Set(allItems.map((it) => String(it.id)));
+      return mySubmissions.filter((s) => {
+        if (s.status === 'Rejected') return false;
+        const subCritId = String((s as any).criteriaId ?? (s as any).criteria_id ?? '');
+        return itemIds.has(subCritId);
+      });
+    },
+    [mySubmissions, criteriaCatalog]
+  );
+
+  // Per-category requirements, limits, and granular progress status
+  const categoryProgressMap = React.useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        count: number;
+        verifiedCount: number;
+        target: number | null;
+        isDone: boolean;
+        isInProgress: boolean;
+        canAddMore: boolean;
+        progressLabel: string;
+        badgeType: 'verified' | 'in_progress' | 'none';
+      }
+    >();
+
+    availableCriteriaCatalog.forEach((cat) => {
+      const catName = String(cat.category || '').toLowerCase().trim();
+      const catCode = String(cat.code || '').toLowerCase().trim();
+      const catId = String(cat.id || '').toLowerCase().trim();
+
+      const isOnline =
+        catName.includes('online course') ||
+        catCode === 'cat-online-courses' ||
+        catId === 'cat-online-courses' ||
+        catId === '2';
+
+      const isAcademics =
+        catName === 'academics' ||
+        catCode === 'cat-academics' ||
+        catId === 'cat-academics' ||
+        catId === '1';
+
+      const subs = getCategorySubmissions(cat);
+      const count = subs.length;
+      const verifiedCount = subs.filter((s) =>
+        ['Approved', 'Verified', 'Student Rep Verified', 'Evaluated', 'Locked'].includes(s.status)
+      ).length;
+
+      if (isOnline) {
+        // Online Courses: Maximum 3 courses per student
+        const target = 3;
+        const isDone = count >= target;
+        const isInProgress = count > 0 && count < target;
+        const canAddMore = count < target;
+        const progressLabel = isDone ? 'Done (3/3)' : count > 0 ? `${count} / 3` : '';
+        const badgeType: 'verified' | 'in_progress' | 'none' = isDone
+          ? 'verified'
+          : count > 0
+          ? 'in_progress'
+          : 'none';
+
+        map.set(cat.id, {
+          count,
+          verifiedCount,
+          target,
+          isDone,
+          isInProgress,
+          canAddMore,
+          progressLabel,
+          badgeType
+        });
+      } else if (isAcademics) {
+        // Academics: 1 submission per type allowed per cycle
+        const target = 1;
+        const isDone = verifiedCount >= 1 || count >= 1;
+        const isInProgress = false;
+        const canAddMore = count === 0;
+        const progressLabel = isDone ? 'Done' : '';
+        const badgeType: 'verified' | 'in_progress' | 'none' = isDone ? 'verified' : 'none';
+
+        map.set(cat.id, {
+          count,
+          verifiedCount,
+          target,
+          isDone,
+          isInProgress,
+          canAddMore,
+          progressLabel,
+          badgeType
+        });
+      } else {
+        // Open categories: Multiple submissions allowed (Internships, Scholarships, Research, Prizes, Exams, etc.)
+        const target = null;
+        const isDone = verifiedCount >= 1;
+        const isInProgress = count > 0 && verifiedCount === 0;
+        const canAddMore = true; // Always allow submitting multiple claims
+        const progressLabel = count > 0 ? `${count} submitted` : '';
+        const badgeType: 'verified' | 'in_progress' | 'none' =
+          verifiedCount > 0 ? 'verified' : count > 0 ? 'in_progress' : 'none';
+
+        map.set(cat.id, {
+          count,
+          verifiedCount,
+          target,
+          isDone,
+          isInProgress,
+          canAddMore,
+          progressLabel,
+          badgeType
+        });
+      }
+    });
+
+    return map;
+  }, [availableCriteriaCatalog, getCategorySubmissions]);
 
   const totalCategories = availableCriteriaCatalog.length;
-  const completedCount = completedCategoryIds.size;
-  const remainingCount = totalCategories - completedCount;
+  const completedCount = React.useMemo(() => {
+    let c = 0;
+    categoryProgressMap.forEach((info) => {
+      if (info.isDone) c++;
+    });
+    return c;
+  }, [categoryProgressMap]);
+
+  const inProgressCount = React.useMemo(() => {
+    let c = 0;
+    categoryProgressMap.forEach((info) => {
+      if (!info.isDone && (info.isInProgress || info.count > 0)) c++;
+    });
+    return c;
+  }, [categoryProgressMap]);
+
+  const remainingCount = Math.max(0, totalCategories - completedCount - inProgressCount);
 
   // Filtered submissions
   const filteredSubmissions = mySubmissions.filter((sub) => {
@@ -1094,20 +1220,27 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       });
       setEditingSubId(null);
     } else {
-      addSubmission({
-        studentId: currentUserInfo?.id || currentUserId || currentStudentId,
-        criteriaId: selectedCriteriaId,
-        description: finalDescription,
-        status: initialStatus,
-        remarks: status === 'Submitted' ? 'Awaiting Student Rep verification' : 'Saved as draft',
-        proof: computedProof,
-        eventId: computedEventId,
-        startDate: (isOnlineCourses || isInternshipsCategory) ? startDate : (isCompetitiveExamsCategory || isUpscExamItem) ? examDate : undefined,
-        endDate: (isOnlineCourses || isInternshipsCategory) ? endDate : undefined,
-        evaluatorVerified: false,
-        evidence: computedEvidence,
-        grade_breakdown: gradeBreakdownPayload
-      });
+      addSubmission(
+        {
+          studentId: currentUserInfo?.id || currentUserId || currentStudentId,
+          criteriaId: selectedCriteriaId,
+          description: finalDescription,
+          status: initialStatus,
+          remarks: status === 'Submitted' ? 'Awaiting Student Rep verification' : 'Saved as draft',
+          proof: computedProof,
+          eventId: computedEventId,
+          startDate: (isOnlineCourses || isInternshipsCategory) ? startDate : (isCompetitiveExamsCategory || isUpscExamItem) ? examDate : undefined,
+          endDate: (isOnlineCourses || isInternshipsCategory) ? endDate : undefined,
+          evaluatorVerified: false,
+          evidence: computedEvidence,
+          grade_breakdown: gradeBreakdownPayload,
+          academicYear: activeAcademicYear,
+          user_email: currentUserInfo?.email || currentEmail,
+          email: currentUserInfo?.email || currentEmail
+        },
+        activeAcademicYear,
+        currentUserInfo?.email || currentEmail
+      );
     }
 
     setDescription('');
@@ -1183,9 +1316,14 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
               <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '12px' }}>Progress</h2>
               <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
                 {completedCount} out of {totalCategories} categories completed
+                {inProgressCount > 0 && (
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0284c7', marginLeft: '8px' }}>
+                    ({inProgressCount} in progress)
+                  </span>
+                )}
               </div>
               <div className="muted" style={{ fontSize: '0.85rem', marginBottom: '12px' }}>
-                Progress: {completedCount} / {totalCategories}
+                Progress: {completedCount} / {totalCategories} categories
               </div>
 
               {/* Progress Bar */}
@@ -1193,7 +1331,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                 <div
                   style={{
                     height: '100%',
-                    width: `${(completedCount / totalCategories) * 100}%`,
+                    width: `${Math.min(100, Math.round(((completedCount + inProgressCount * 0.5) / (totalCategories || 1)) * 100))}%`,
                     background: 'linear-gradient(90deg, var(--primary), var(--secondary))',
                     borderRadius: '5px',
                     transition: 'width 0.6s ease'
@@ -1201,10 +1339,25 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 <span className="badge badge-verified" style={{ padding: '6px 14px', fontSize: '0.85rem' }}>
                   ✓ Completed {completedCount}
                 </span>
+                {inProgressCount > 0 && (
+                  <span
+                    className="badge"
+                    style={{
+                      padding: '6px 14px',
+                      fontSize: '0.85rem',
+                      background: '#e0f2fe',
+                      color: '#0369a1',
+                      border: '1px solid #bae6fd',
+                      fontWeight: 700
+                    }}
+                  >
+                    ⏳ In Progress {inProgressCount}
+                  </span>
+                )}
                 <span className="badge badge-correction" style={{ padding: '6px 14px', fontSize: '0.85rem' }}>
                   ⏳ Remaining {remainingCount}
                 </span>
@@ -1216,37 +1369,91 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
               <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px' }}>Category Checklist</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {paginatedChecklist.map((cat) => {
-                  const isDone = completedCategoryIds.has(cat.id);
+                  const info = categoryProgressMap.get(cat.id) || {
+                    count: 0,
+                    verifiedCount: 0,
+                    target: null,
+                    isDone: false,
+                    isInProgress: false,
+                    canAddMore: true,
+                    progressLabel: '',
+                    badgeType: 'none' as const
+                  };
+
+                  const isDone = info.isDone;
+                  const isInProgress = info.isInProgress || (info.count > 0 && !isDone);
+                  const canAdd = info.canAddMore;
+
                   return (
                     <div
                       key={cat.id}
                       className="checklist-row"
-                      style={{ cursor: isDone ? 'default' : 'pointer' }}
+                      style={{ cursor: canAdd ? 'pointer' : 'default' }}
                       onClick={() => {
-                        if (!isDone) handleNavToSubmit(cat.id);
+                        if (canAdd) handleNavToSubmit(cat.id);
                       }}
                     >
                       <div className="checklist-left">
-                        <span style={{ color: isDone ? 'var(--color-success)' : 'var(--color-text-soft)' }}>
-                          {isDone ? '✓' : 'Σ'}
+                        <span
+                          style={{
+                            color: isDone
+                              ? 'var(--color-success)'
+                              : isInProgress
+                              ? '#0284c7'
+                              : 'var(--color-text-soft)',
+                            fontWeight: 800,
+                            fontSize: '1rem'
+                          }}
+                        >
+                          {isDone ? '✓' : isInProgress ? '⏳' : 'Σ'}
                         </span>
                         <span style={{ fontWeight: 600 }}>{cat.category}</span>
                       </div>
 
-                      {isDone ? (
-                        <span className="badge badge-verified" style={{ padding: '6px 14px' }}>Done</span>
-                      ) : (
-                        <button
-                          className="btn btn-sm btn-secondary checklist-add-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleNavToSubmit(cat.id);
-                          }}
-                          title={`Submit claim under ${cat.category}`}
-                        >
-                          +
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {info.progressLabel && (
+                          <span
+                            className={`badge ${
+                              info.badgeType === 'verified'
+                                ? 'badge-verified'
+                                : ''
+                            }`}
+                            style={{
+                              padding: '5px 12px',
+                              fontSize: '0.82rem',
+                              fontWeight: 700,
+                              borderRadius: '12px',
+                              background:
+                                info.badgeType === 'verified'
+                                  ? undefined
+                                  : '#e0f2fe',
+                              color:
+                                info.badgeType === 'verified'
+                                  ? undefined
+                                  : '#0369a1',
+                              border:
+                                info.badgeType === 'verified'
+                                  ? undefined
+                                  : '1px solid #bae6fd'
+                            }}
+                          >
+                            {info.progressLabel}
+                          </span>
+                        )}
+
+                        {canAdd && (
+                          <button
+                            className="btn btn-sm btn-secondary checklist-add-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleNavToSubmit(cat.id);
+                            }}
+                            title={`Submit claim under ${cat.category}`}
+                          >
+                            +
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
