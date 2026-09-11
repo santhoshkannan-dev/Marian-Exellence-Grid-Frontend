@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import type { ClassIndexEntry } from '@/context/AppContext';
 import { Submission } from '@/data/initialData';
+import { PodiumSkeleton, TableSkeleton, LoadingButton } from '@/components/loading';
 
 export default function ClassRankingsPage() {
   const {
@@ -257,9 +258,11 @@ export default function ClassRankingsPage() {
                 Updated {lastUpdated.toLocaleTimeString()}
               </span>
             )}
-            <button
+            <LoadingButton
               onClick={() => refresh(year || undefined)}
               disabled={loading}
+              loading={loading}
+              loadingText="Refreshing…"
               title="Refresh now"
               style={{
                 background: loading ? '#e0e7ff' : '#EDE9FE', color: loading ? '#a5b4fc' : '#5B21B6',
@@ -268,8 +271,8 @@ export default function ClassRankingsPage() {
                 transition: 'all 0.2s ease',
               }}
             >
-              {loading ? '⏳ Refreshing…' : '↻ Refresh'}
-            </button>
+              ↻ Refresh
+            </LoadingButton>
           </div>
         </div>
 
@@ -309,7 +312,10 @@ export default function ClassRankingsPage() {
 
         {/* Loading */}
         {loading && classIndexData === null && (
-          <div style={{ textAlign: 'center', padding: '48px', color: '#6366f1', fontWeight: 700 }}>Computing moderated index…</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', margin: '20px 0' }}>
+            <PodiumSkeleton />
+            <TableSkeleton rows={5} columns={6} />
+          </div>
         )}
 
         {/* Empty state */}

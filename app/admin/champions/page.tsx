@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { useApp } from '@/context/AppContext';
 import { Champion } from '@/data/initialData';
 import { CustomModal } from '@/components/CustomModal';
+import { LoadingButton } from '@/components/loading';
 
 export default function ChampionsManagementPage() {
   const { championsData, fetchChampions, academicYears, classes } = useApp();
@@ -281,9 +282,10 @@ export default function ChampionsManagementPage() {
             </div>
           </div>
 
-          <button
+          <LoadingButton
             type="submit"
-            disabled={isSubmitting}
+            loading={isSubmitting}
+            loadingText="Inserting Champion Record..."
             style={{
               padding: '14px',
               background: 'linear-gradient(135deg, #FF6B2C 0%, #ea580c 100%)',
@@ -298,8 +300,8 @@ export default function ChampionsManagementPage() {
               transition: 'all 0.2s ease'
             }}
           >
-            {isSubmitting ? 'Inserting Champion Record...' : '🏆 Insert Champion Record'}
-          </button>
+            🏆 Insert Champion Record
+          </LoadingButton>
         </form>
       </div>
 

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { LoadingScreen } from '@/components/loading';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -30,20 +31,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isInitialized) {
     return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Verifying administrator credentials...</p>
-        <span className="sr-only">Loading administrator panel</span>
-      </div>
+      <LoadingScreen
+        message="Verifying administrator credentials..."
+        subtitle="Loading institutional configuration and governance controls"
+      />
     );
   }
 
   if (!loggedIn || (currentRole && currentRole !== 'admin')) {
     return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Redirecting to authorized portal...</p>
-      </div>
+      <LoadingScreen
+        message="Redirecting to authorized portal..."
+        subtitle="Validating administrator access permissions"
+      />
     );
   }
 

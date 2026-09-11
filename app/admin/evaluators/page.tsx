@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { toast } from 'react-toastify';
+import { LoadingButton } from '@/components/loading';
 
 export default function EvaluatorManagementPage() {
   const { criteriaCatalog, userGroups, assignEvaluatorsToCategory } = useApp();
@@ -68,9 +69,10 @@ export default function EvaluatorManagementPage() {
           <p className="muted" style={{ fontSize: '0.88rem' }}>Assign specific categories to each member of the Evaluation Committee.</p>
         </div>
         
-        <button
+        <LoadingButton
           onClick={handleSave}
-          disabled={isSaving}
+          loading={isSaving}
+          loadingText="Saving Changes..."
           style={{
             padding: '10px 24px',
             background: isSaving ? '#94a3b8' : 'var(--primary)',
@@ -84,8 +86,8 @@ export default function EvaluatorManagementPage() {
             boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
           }}
         >
-          {isSaving ? 'Saving...' : 'Confirm & Save Changes'}
-        </button>
+          Confirm & Save Changes
+        </LoadingButton>
       </div>
 
       {allEvaluators.length === 0 ? (

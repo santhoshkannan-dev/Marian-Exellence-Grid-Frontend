@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { LoadingScreen } from '@/components/loading';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -21,20 +22,19 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   if (!isInitialized) {
     return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Verifying student credentials...</p>
-        <span className="sr-only">Loading student portal</span>
-      </div>
+      <LoadingScreen
+        message="Verifying student credentials..."
+        subtitle="Loading your student workspace and class evaluation records"
+      />
     );
   }
 
   if (!loggedIn) {
     return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Redirecting to login portal...</p>
-      </div>
+      <LoadingScreen
+        message="Redirecting to login portal..."
+        subtitle="Please authenticate to access the student portal"
+      />
     );
   }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { ExcellenceLoader } from '@/components/loading';
 
 /**
  * Reusable Loading Skeleton for tables, lists, and cards
@@ -15,6 +16,7 @@ export const LoadingSkeleton: React.FC<{
     <div
       role="status"
       aria-live="polite"
+      aria-busy="true"
       className={`state-loading-container ${className}`}
       style={{
         padding: '24px',
@@ -25,17 +27,8 @@ export const LoadingSkeleton: React.FC<{
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-        <div
-          style={{
-            width: '18px',
-            height: '18px',
-            border: '2.5px solid #E2E8F0',
-            borderTopColor: 'var(--primary, #4F46E5)',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }}
-        />
-        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748B' }}>{message}</span>
+        <ExcellenceLoader size="sm" label={message} />
+        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748B' }}>{message}</span>
       </div>
 
       {Array.from({ length: lines }).map((_, idx) => (

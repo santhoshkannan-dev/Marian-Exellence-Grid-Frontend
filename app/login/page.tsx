@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { LoadingButton, ExcellenceLoader } from '@/components/loading';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -145,8 +146,12 @@ export default function LoginPage() {
             )}
 
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', background: 'rgba(99, 102, 241, 0.05)', color: 'var(--primary)', borderRadius: '10px', marginBottom: '20px', fontSize: '0.86rem', fontWeight: 600 }}>
-                <span className="spinner" style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+              <div 
+                role="status" 
+                aria-live="polite"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '12px', background: 'rgba(99, 102, 241, 0.05)', color: 'var(--primary)', borderRadius: '10px', marginBottom: '20px', fontSize: '0.86rem', fontWeight: 600 }}
+              >
+                <ExcellenceLoader size="sm" ariaLabel="Authenticating" />
                 <span>Authenticating with server...</span>
               </div>
             )}
@@ -191,13 +196,19 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <button type="submit" className="btn-continue" disabled={loading} style={{ width: '100%', height: '48px', justifyContent: 'center' }}>
+              <LoadingButton
+                type="submit"
+                className="btn-continue"
+                loading={loading}
+                loadingText="Signing in..."
+                style={{ width: '100%', height: '48px', justifyContent: 'center' }}
+              >
                 <span>Bypass & Log In</span>
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12" />
                   <polyline points="12 5 19 12 12 19" />
                 </svg>
-              </button>
+              </LoadingButton>
             </form>
 
             <div className="card-accent" style={{ marginTop: '24px' }}>

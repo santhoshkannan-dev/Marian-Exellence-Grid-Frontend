@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { apiClient } from '@/services/apiClient';
 import { UserGroup, UserGroupMemberDetail } from '@/data/initialData';
+import { CardSkeleton, LoadingButton } from '@/components/loading';
 
 // Strict definition of the 4 Official User Groups
 const OFFICIAL_GROUPS = [
@@ -207,7 +208,10 @@ export default function AdminGroupsPage() {
 
       {/* Official Groups List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-        {OFFICIAL_GROUPS.map((og) => {
+        {loading ? (
+          <CardSkeleton count={4} />
+        ) : (
+          OFFICIAL_GROUPS.map((og) => {
           const group = groupsData.find((g) => g.id === og.id) || {
             id: og.id,
             name: og.name,
@@ -341,14 +345,16 @@ export default function AdminGroupsPage() {
                     required
                   />
 
-                  <button
+                  <LoadingButton
                     type="submit"
                     className="btn btn-primary"
                     disabled={submitting[og.id] || loading}
+                    loading={!!submitting[og.id]}
+                    loadingText="Adding..."
                     style={{ height: '40px', padding: '0 20px', fontSize: '0.85rem', fontWeight: 700, whiteSpace: 'nowrap' }}
                   >
-                    {submitting[og.id] ? 'Adding...' : '+ Add Member'}
-                  </button>
+                    + Add Member
+                  </LoadingButton>
                 </form>
 
                 {status?.msg && (
@@ -523,7 +529,8 @@ export default function AdminGroupsPage() {
               </div>
             </div>
           );
-        })}
+        })
+      )}
       </div>
     </div>
   );

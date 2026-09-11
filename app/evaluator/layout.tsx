@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { LoadingScreen } from '@/components/loading';
 
 export default function EvaluatorLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -26,20 +27,19 @@ export default function EvaluatorLayout({ children }: { children: React.ReactNod
 
   if (!isInitialized) {
     return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Verifying evaluator credentials...</p>
-        <span className="sr-only">Loading evaluator portal</span>
-      </div>
+      <LoadingScreen
+        message="Verifying evaluator credentials..."
+        subtitle="Loading evaluation queues and category audit sheets"
+      />
     );
   }
 
   if (!loggedIn || (currentRole && currentRole !== 'evaluator' && currentRole !== 'evaluation' && currentRole !== 'admin')) {
     return (
-      <div role="status" aria-live="polite" className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" style={{ borderTopColor: 'transparent' }}></div>
-        <p className="text-sm font-semibold text-gray-500">Redirecting to authorized portal...</p>
-      </div>
+      <LoadingScreen
+        message="Redirecting to authorized portal..."
+        subtitle="Validating evaluation committee access permissions"
+      />
     );
   }
 
