@@ -20,6 +20,8 @@ export interface ClassIndexEntry {
   extra_curricular_score?: number;
   scoring_version?: string;
   M: number | null;
+  total_submissions?: number;
+  submitted_categories?: { category: string; count: number; points?: number }[];
 }
 
 export interface RankingContextType {

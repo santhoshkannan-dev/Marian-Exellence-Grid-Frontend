@@ -18,6 +18,27 @@ interface LockedSubmission {
   dept: string;
 }
 
+export interface VerificationDocItem {
+  id: string;
+  subId: number;
+  fileName: string;
+  studentName: string;
+  studentEmail?: string;
+  studentClass?: string;
+  studentDept?: string;
+  category: string;
+  activityTitle: string;
+  description?: string;
+  date?: string;
+  proofUrl?: string;
+  proof?: string;
+  marks?: number;
+  evidence?: any;
+  status?: string;
+  remarks?: string;
+  gradeBreakdown?: any;
+}
+
 import { useApp } from '@/context/AppContext';
 
 export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = 'dashboard' }) => {
@@ -31,6 +52,13 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
     currentUserInfo,
     classes
   } = useApp();
+
+  // Document preview modal and inline remarks state
+  const [previewModalDoc, setPreviewModalDoc] = useState<VerificationDocItem | null>(null);
+  const [modalRemarks, setModalRemarks] = useState('');
+  const [submissionRemarksMap, setSubmissionRemarksMap] = useState<Record<number, string>>({});
+  const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'all'>('pending');
+  const [completedStatusFilter, setCompletedStatusFilter] = useState<'all' | 'evaluated' | 'correction' | 'rejected'>('all');
 
   // Helper to check if submission belongs to a category assigned to the current evaluator
   const isAssignedToEvaluator = (s: any) => {
@@ -85,7 +113,7 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
     return isValidStatus && isTeacherVerified && isAssignedToEvaluator(s);
   });
 
-  const handleVerifySubmissionEvaluator = (subId: number) => {
+  const handleVerifySubmissionEvaluator = (subId: number, customRemarks?: string) => {
     if (!evaluationOpen) {
       toast.error('Evaluation access is currently CLOSED by system administrator.');
       return;
@@ -174,19 +202,198 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
       calculatedMarks = parsed;
     }
 
-    const evaluatorName = currentUserInfo?.name || 'Evaluation Team';
+    const evaluatorName = currentUserInfo?.name || (currentUserInfo as any)?.username || 'Evaluation Team';
+    const inlineRemarks = customRemarks || submissionRemarksMap[subId];
+    const defaultRemarks = isManual ? `Manually evaluated: awarded ${calculatedMarks} marks.` : 'Verified and auto-evaluated based on dynamic criteria rules.';
+    const finalRemarks = (inlineRemarks && inlineRemarks.trim()) ? inlineRemarks.trim() : defaultRemarks;
 
     updateSubmission(subId, {
       status: 'Evaluated',
       evaluatorVerified: true,
       evaluatorVerifiedByName: evaluatorName,
-      evaluatorRemarks: isManual ? `Manually evaluated: awarded ${calculatedMarks} marks.` : 'Verified and auto-evaluated based on dynamic criteria rules.',
+      evaluatorRemarks: finalRemarks,
+      remarks: finalRemarks,
       marks: calculatedMarks,
       calculated_marks: calculatedMarks,
-      calculatedMarks: calculatedMarks
+      calculatedMarks: calculatedMarks,
+      role_context: 'evaluator'
+    } as any);
+
+    setSubmissionRemarksMap(prev => {
+      const copy = { ...prev };
+      delete copy[subId];
+      return copy;
     });
 
-    toast.success(`Submission successfully verified and assigned ${calculatedMarks} marks!`);
+    if (previewModalDoc?.subId === subId) {
+      setPreviewModalDoc(null);
+    }
+
+    toast.success(`✓ Submission #${subId} verified and awarded ${calculatedMarks} marks!`);
+  };
+
+  const handleCorrectionSubmissionEvaluator = (subId: number, customRemarks?: string) => {
+    if (!evaluationOpen) {
+      toast.error('Evaluation access is currently CLOSED by system administrator.');
+      return;
+    }
+
+    const remarks = (customRemarks || submissionRemarksMap[subId] || '').trim();
+    if (!remarks) {
+      const inputEl = document.getElementById(`evaluator-remarks-${subId}`) as HTMLInputElement;
+      if (inputEl) {
+        inputEl.reportValidity();
+        inputEl.focus();
+      }
+      toast.error('Remarks/instructions are strictly required for requesting correction.');
+      return;
+    }
+
+    const sub = submissions.find(s => s.id === subId);
+    if (!sub) return;
+
+    const evaluatorName = currentUserInfo?.name || (currentUserInfo as any)?.username || 'Evaluation Team';
+
+    updateSubmission(subId, {
+      status: 'Correction Requested',
+      evaluatorVerified: false,
+      evaluatorVerifiedByName: evaluatorName,
+      evaluatorRemarks: remarks,
+      remarks: remarks,
+      marks: 0,
+      calculated_marks: 0,
+      calculatedMarks: 0,
+      role_context: 'evaluator'
+    } as any);
+
+    setSubmissionRemarksMap(prev => {
+      const copy = { ...prev };
+      delete copy[subId];
+      return copy;
+    });
+
+    if (previewModalDoc?.subId === subId) {
+      setPreviewModalDoc(null);
+    }
+
+    toast.warn(`⚠️ Correction requested for submission #${subId}. Feedback sent to student.`);
+  };
+
+  const handleRejectSubmissionEvaluator = (subId: number, customRemarks?: string) => {
+    if (!evaluationOpen) {
+      toast.error('Evaluation access is currently CLOSED by system administrator.');
+      return;
+    }
+
+    const remarks = (customRemarks || submissionRemarksMap[subId] || '').trim();
+    if (!remarks) {
+      const inputEl = document.getElementById(`evaluator-remarks-${subId}`) as HTMLInputElement;
+      if (inputEl) {
+        inputEl.reportValidity();
+        inputEl.focus();
+      }
+      toast.error('Remarks/reason are strictly required for rejecting a submission.');
+      return;
+    }
+
+    const sub = submissions.find(s => s.id === subId);
+    if (!sub) return;
+
+    const evaluatorName = currentUserInfo?.name || (currentUserInfo as any)?.username || 'Evaluation Team';
+
+    updateSubmission(subId, {
+      status: 'Rejected',
+      evaluatorVerified: false,
+      evaluatorVerifiedByName: evaluatorName,
+      evaluatorRemarks: remarks,
+      remarks: remarks,
+      marks: 0,
+      calculated_marks: 0,
+      calculatedMarks: 0,
+      role_context: 'evaluator'
+    } as any);
+
+    setSubmissionRemarksMap(prev => {
+      const copy = { ...prev };
+      delete copy[subId];
+      return copy;
+    });
+
+    if (previewModalDoc?.subId === subId) {
+      setPreviewModalDoc(null);
+    }
+
+    toast.error(`✗ Submission #${subId} has been rejected.`);
+  };
+
+  // Helper to format clean file name
+  const formatFileName = (sub: any) => {
+    if (sub.proof && isNaN(Number(sub.proof)) && sub.proof.length > 2) {
+      return sub.proof.endsWith('.pdf') ? sub.proof : `${sub.proof}.pdf`;
+    }
+    const criteriaItem = criteriaCatalog.flatMap((c) => c.items).find((it) => String(it.id) === String(sub.criteriaId));
+    if (criteriaItem?.title) {
+      const cleanTitle = criteriaItem.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 22);
+      return `${cleanTitle}_Proof.pdf`;
+    }
+    return `Institutional_Proof_${sub.id}.pdf`;
+  };
+
+  // Open Document Preview Modal
+  const handleOpenPreview = (sub: any) => {
+    const student = students.find((st) => st.id === sub.studentId);
+    const item = criteriaCatalog.flatMap((c) => c.items).find((it) => String(it.id) === String(sub.criteriaId));
+    const cat = criteriaCatalog.find((c) => c.items.some((it) => String(it.id) === String(sub.criteriaId)));
+
+    const doc: VerificationDocItem = {
+      id: String(sub.id),
+      subId: sub.id,
+      fileName: formatFileName(sub),
+      studentName: student?.name || (sub as any).user_name || 'Student',
+      studentEmail: student?.email || (sub as any).user_email || 'student@mariancollege.org',
+      studentClass: student?.className || sub.className || 'General',
+      studentDept: getStudentDept(student, sub),
+      category: cat?.category || 'Academic & Research',
+      activityTitle: item?.title || sub.description || 'Academic Excellence Claim',
+      description: sub.description || 'Institutional proof submitted for evaluator assessment.',
+      date: sub.submissionDate || sub.submission_date || 'Recent',
+      proof: sub.proof,
+      proofUrl: sub.proof ? (sub.proof.startsWith('http') ? sub.proof : `/Assets/Proofs/${sub.proof}`) : undefined,
+      marks: getSubmissionMarks(sub),
+      evidence: sub.evidence,
+      status: sub.status,
+      remarks: sub.evaluatorRemarks || sub.remarks || '',
+      gradeBreakdown: sub.grade_breakdown
+    };
+
+    setPreviewModalDoc(doc);
+    setModalRemarks(submissionRemarksMap[sub.id] || sub.evaluatorRemarks || '');
+  };
+
+  // Handle Modal Decision
+  const handleModalAction = (status: 'Approved' | 'Rejected' | 'Correction Requested') => {
+    if (!previewModalDoc) return;
+    const subId = previewModalDoc.subId;
+
+    if (status === 'Rejected' || status === 'Correction Requested') {
+      const textarea = document.getElementById('modal-remarks-textarea') as HTMLTextAreaElement;
+      if (!modalRemarks.trim()) {
+        if (textarea) {
+          textarea.reportValidity();
+          textarea.focus();
+        }
+        toast.error(`A remark or explanation is strictly required when selecting ${status === 'Rejected' ? 'Reject' : 'Correction'}.`);
+        return;
+      }
+
+      if (status === 'Correction Requested') {
+        handleCorrectionSubmissionEvaluator(subId, modalRemarks);
+      } else {
+        handleRejectSubmissionEvaluator(subId, modalRemarks);
+      }
+    } else {
+      handleVerifySubmissionEvaluator(subId, modalRemarks);
+    }
   };
 
   const getSubmissionMarks = (s: any) => {
@@ -223,12 +430,29 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
   // Metrics
   const assignedSubmissions = submissions.filter(s => isAssignedToEvaluator(s));
   const totalSubmissionsCount = submissions.length;
-  const verifiedSubmissions = submissions.filter(s => (s.status === 'Locked' || s.evaluatorVerified) && isAssignedToEvaluator(s));
+  const verifiedSubmissions = submissions.filter(s => (s.status === 'Locked' || s.status === 'Evaluated' || s.evaluatorVerified) && isAssignedToEvaluator(s));
   
   const verifiedCount = verifiedSubmissions.length;
   const pendingCount = teacherApprovedSubmissions.length;
   const rejectedCount = submissions.filter(s => (s.status === 'Rejected' || (s.status as string) === 'Disapproved') && isAssignedToEvaluator(s)).length;
-  const correctionCount = submissions.filter(s => (s.status === 'Correction' || (s.status as string) === 'Returned') && isAssignedToEvaluator(s)).length;
+  const correctionCount = submissions.filter(s => (s.status === 'Correction' || s.status === 'Correction Requested' || (s.status as string) === 'Returned') && isAssignedToEvaluator(s)).length;
+
+  const completedSubmissions = submissions.filter(s => {
+    const isEvaluated = s.status === 'Locked' || s.status === 'Evaluated' || s.evaluatorVerified;
+    const isCorrection = ['Correction Requested', 'Correction'].includes(s.status) && (!!s.evaluatorRemarks || !!s.evaluatorVerifiedByName);
+    const isRejected = (s.status === 'Rejected' || (s.status as string) === 'Disapproved') && (!!s.evaluatorRemarks || !!s.evaluatorVerifiedByName);
+    return (isEvaluated || isCorrection || isRejected) && isAssignedToEvaluator(s);
+  });
+  const completedCount = completedSubmissions.length;
+  const allCount = assignedSubmissions.length;
+
+  const filteredCompletedSubmissions = completedSubmissions.filter(s => {
+    if (completedStatusFilter === 'all') return true;
+    if (completedStatusFilter === 'evaluated') return s.status === 'Locked' || s.status === 'Evaluated' || s.evaluatorVerified;
+    if (completedStatusFilter === 'correction') return ['Correction Requested', 'Correction'].includes(s.status);
+    if (completedStatusFilter === 'rejected') return s.status === 'Rejected' || (s.status as string) === 'Disapproved';
+    return true;
+  });
 
   const totalEvaluatedDomainCount = assignedSubmissions.length > 0 ? assignedSubmissions.length : (verifiedCount + pendingCount + rejectedCount + correctionCount);
 
@@ -238,7 +462,7 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
     return sum + getSubmissionMarks(s);
   }, 0);
 
-  const lockedList = submissions.filter(s => (s.status === 'Locked' || s.evaluatorVerified) && isAssignedToEvaluator(s)).map(s => {
+  const lockedList = submissions.filter(s => (s.status === 'Locked' || s.status === 'Evaluated' || s.evaluatorVerified) && isAssignedToEvaluator(s)).map(s => {
     const item = criteriaCatalog.flatMap(c => c.items).find(it => String(it.id) === String(s.criteriaId));
     const cat = criteriaCatalog.find(c => c.items.some(it => String(it.id) === String(s.criteriaId)));
     const student = students.find(st => st.id === s.studentId);
@@ -302,8 +526,7 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
       classesList.push({ name: 'N/A', dept: 'N/A', score: 0, mentor: 'N/A' });
   }
 
-  // Evaluation tab active filters
-  const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
+  // Evaluation tab active filters (search, dropdowns, expanded)
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState('All Departments');
   const [selectedClass, setSelectedClass] = useState('All Classes');
@@ -333,11 +556,21 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
          const student = students.find(st => st.id === s.studentId);
          return getStudentDept(student, s) === deptName;
      }).length;
+     const deptCompleted = completedSubmissions.filter(s => {
+         const student = students.find(st => st.id === s.studentId);
+         return getStudentDept(student, s) === deptName;
+     }).length;
+     const deptTotal = assignedSubmissions.filter(s => {
+         const student = students.find(st => st.id === s.studentId);
+         return getStudentDept(student, s) === deptName;
+     }).length;
      
      return {
         name: deptName as string,
-        total: deptPending + deptVerified,
-        verified: deptVerified
+        total: activeTab === 'all' ? deptTotal : (activeTab === 'completed' ? deptCompleted : deptPending),
+        pending: deptPending,
+        verified: deptVerified,
+        completed: deptCompleted
      };
   });
 
@@ -362,10 +595,15 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
   };
 
   // Filtering Departments
-  const pendingDepts = deptStats.filter((d) => (d.total - d.verified) > 0 || d.total === 0);
-  const completedDepts = deptStats.filter((d) => d.verified > 0);
+  const pendingDepts = deptStats.filter((d) => d.pending > 0);
+  const completedDepts = deptStats.filter((d) => d.completed > 0);
+  const allDomainDepts = deptStats.filter((d) => d.total > 0 || deptStats.length <= 1);
 
-  const activeDepts = activeTab === 'pending' ? pendingDepts : completedDepts;
+  const activeDepts = activeTab === 'pending'
+    ? (pendingDepts.length > 0 ? pendingDepts : deptStats)
+    : activeTab === 'completed'
+    ? (completedDepts.length > 0 ? completedDepts : deptStats)
+    : (allDomainDepts.length > 0 ? allDomainDepts : deptStats);
 
   const filteredDepts = activeDepts.filter((d) => {
     const matchesDept = selectedDept === 'All Departments' || d.name === selectedDept;
@@ -754,43 +992,108 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
 
           {/* FILTER CONTROLS */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginBottom: '24px' }}>
-            {/* PENDING / COMPLETED TABS */}
-            <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+            {/* FILTER STATUS TABS (SAME AS CLASS TEACHER WINDOW) */}
+            <div style={{ display: 'flex', gap: '6px' }}>
               <button
+                type="button"
                 style={{
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  border: 'none',
+                  padding: '8px 14px',
+                  borderRadius: '10px',
+                  border: activeTab === 'pending' ? 'none' : '1px solid #e2e8f0',
                   fontWeight: 700,
-                  fontSize: '0.88rem',
+                  fontSize: '0.82rem',
                   cursor: 'pointer',
-                  background: activeTab === 'pending' ? 'var(--color-primary)' : 'transparent',
-                  color: activeTab === 'pending' ? '#ffffff' : '#475569'
+                  background: activeTab === 'pending' ? '#4f46e5' : '#f8fafc',
+                  color: activeTab === 'pending' ? '#ffffff' : '#475569',
+                  boxShadow: activeTab === 'pending' ? '0 2px 8px rgba(79, 70, 229, 0.25)' : 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
                 }}
                 onClick={() => {
                   setActiveTab('pending');
                   setExpandedDept(null);
                 }}
               >
-                Pending
+                <span>Pending Reviews</span>
+                <span style={{
+                  padding: '1px 7px',
+                  borderRadius: '9999px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  background: activeTab === 'pending' ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                  color: activeTab === 'pending' ? '#ffffff' : '#475569'
+                }}>
+                  {pendingCount}
+                </span>
               </button>
+
               <button
+                type="button"
                 style={{
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  border: 'none',
+                  padding: '8px 14px',
+                  borderRadius: '10px',
+                  border: activeTab === 'completed' ? 'none' : '1px solid #e2e8f0',
                   fontWeight: 700,
-                  fontSize: '0.88rem',
+                  fontSize: '0.82rem',
                   cursor: 'pointer',
-                  background: activeTab === 'completed' ? 'var(--color-primary)' : 'transparent',
-                  color: activeTab === 'completed' ? '#ffffff' : '#475569'
+                  background: activeTab === 'completed' ? '#4f46e5' : '#f8fafc',
+                  color: activeTab === 'completed' ? '#ffffff' : '#475569',
+                  boxShadow: activeTab === 'completed' ? '0 2px 8px rgba(79, 70, 229, 0.25)' : 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
                 }}
                 onClick={() => {
                   setActiveTab('completed');
                   setExpandedDept(null);
                 }}
               >
-                Completed
+                <span>Completed</span>
+                <span style={{
+                  padding: '1px 7px',
+                  borderRadius: '9999px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  background: activeTab === 'completed' ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                  color: activeTab === 'completed' ? '#ffffff' : '#475569'
+                }}>
+                  {completedCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '10px',
+                  border: activeTab === 'all' ? 'none' : '1px solid #e2e8f0',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  background: activeTab === 'all' ? '#4f46e5' : '#f8fafc',
+                  color: activeTab === 'all' ? '#ffffff' : '#475569',
+                  boxShadow: activeTab === 'all' ? '0 2px 8px rgba(79, 70, 229, 0.25)' : 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                onClick={() => {
+                  setActiveTab('all');
+                  setExpandedDept(null);
+                }}
+              >
+                <span>All Audited</span>
+                <span style={{
+                  padding: '1px 7px',
+                  borderRadius: '9999px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  background: activeTab === 'all' ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                  color: activeTab === 'all' ? '#ffffff' : '#475569'
+                }}>
+                  {allCount}
+                </span>
               </button>
             </div>
 
@@ -876,11 +1179,16 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
                     {isExpanded && (
                       <div style={{ padding: '20px', background: '#fafaf9', borderTop: '1px solid var(--glass-border)' }}>
                         <h4 style={{ fontSize: '0.94rem', fontWeight: 800, color: 'var(--color-primary)', marginBottom: '12px' }}>
-                          {activeTab === 'pending' ? `Pending Submissions in ${dept.name}` : `Completed Submissions in ${dept.name}`}
+                          {activeTab === 'pending' ? `Pending Submissions in ${dept.name}` : activeTab === 'completed' ? `Completed Submissions in ${dept.name}` : `All Submissions in ${dept.name}`}
                         </h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {/* Live Submissions Forwarded from Class Teacher (Round 2) */}
-                          {(activeTab === 'pending' ? teacherApprovedSubmissions : verifiedSubmissions)
+                          {/* Submissions in Department */}
+                          {(activeTab === 'pending'
+                            ? teacherApprovedSubmissions
+                            : activeTab === 'completed'
+                            ? filteredCompletedSubmissions
+                            : assignedSubmissions
+                          )
                             .filter(sub => {
                                const studentObj = students.find((s) => s.id === sub.studentId);
                                const matchesDept = getStudentDept(studentObj, sub) === dept.name;
@@ -898,14 +1206,41 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
                             const catObj = criteriaCatalog.find((c) => c.items.some((i) => String(i.id) === String(sub.criteriaId)));
                             const isDriveUrl = sub.proof?.startsWith('http://') || sub.proof?.startsWith('https://');
 
+                            const isPendingReview = [
+                              'Teacher Verified',
+                              'TEACHER_VERIFIED',
+                              'EVALUATOR_PENDING',
+                              'Approved',
+                              'Verified'
+                            ].includes(sub.status) && !sub.evaluatorVerified && sub.status !== 'Locked' && sub.status !== 'Evaluated';
+
+                            const isEvaluated = sub.evaluatorVerified || sub.status === 'Evaluated' || sub.status === 'Locked';
+                            const isCorrection = ['Correction Requested', 'Correction'].includes(sub.status);
+                            const isRejected = sub.status === 'Rejected' || (sub.status as string) === 'Disapproved';
+
                             return (
-                              <div key={`live-sub-${sub.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '14px 18px', border: activeTab === 'pending' ? '1.5px solid #6366f1' : '1px solid #e2e8f0', borderRadius: '10px', boxShadow: activeTab === 'pending' ? '0 2px 8px rgba(99, 102, 241, 0.08)' : 'none' }}>
-                                <div>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                    <h5 style={{ fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
-                                      {studentObj ? studentObj.name : `Student #${sub.studentId}`}
+                              <div
+                                key={`live-sub-${sub.id}`}
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  background: '#ffffff',
+                                  padding: '14px 18px',
+                                  border: isPendingReview ? '1.5px solid #6366f1' : '1px solid #e2e8f0',
+                                  borderRadius: '12px',
+                                  boxShadow: isPendingReview ? '0 2px 8px rgba(99, 102, 241, 0.08)' : 'none',
+                                  gap: '16px',
+                                  flexWrap: 'wrap'
+                                }}
+                              >
+                                <div style={{ flex: 1, minWidth: '240px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                                    <h5 style={{ fontWeight: 800, color: 'var(--text-main)', margin: 0, fontSize: '0.94rem' }}>
+                                      {studentObj ? studentObj.name : (sub.user_name || `Student #${sub.studentId}`)}
                                     </h5>
-                                    {activeTab === 'pending' ? (
+                                    
+                                    {isPendingReview ? (
                                       <div style={{ display: 'flex', gap: '6px' }}>
                                         <span className="badge badge-verified" style={{ background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', fontSize: '0.72rem', fontWeight: 800 }}>
                                           ✓ Rep Verified ({sub.repVerifiedByName || 'Rep'})
@@ -914,39 +1249,135 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
                                           ✓ Teacher Verified ({sub.teacherVerifiedByName || sub.verifiedByName || 'Teacher'})
                                         </span>
                                       </div>
+                                    ) : isEvaluated ? (
+                                      <span className="badge" style={{ background: '#dcfce7', color: '#16a34a', fontWeight: 800, fontSize: '0.72rem', border: '1px solid #86efac' }}>
+                                        ✓ Evaluated ({getSubmissionMarks(sub).toFixed(1)} pts)
+                                      </span>
+                                    ) : isCorrection ? (
+                                      <span className="badge" style={{ background: '#fef3c7', color: '#b45309', fontWeight: 800, fontSize: '0.72rem', border: '1px solid #fde68a' }}>
+                                        ⚠️ Correction Requested
+                                      </span>
+                                    ) : isRejected ? (
+                                      <span className="badge" style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.72rem', border: '1px solid #fca5a5' }}>
+                                        ❌ Rejected
+                                      </span>
                                     ) : (
-                                      <span className="badge" style={{ background: '#dcfce7', color: '#16a34a', fontWeight: 700, fontSize: '0.72rem' }}>
+                                      <span className="badge" style={{ background: '#f1f5f9', color: '#475569', fontWeight: 700, fontSize: '0.72rem' }}>
                                         {sub.status}
                                       </span>
                                     )}
+
+                                    {sub.evaluatorVerifiedByName && (
+                                      <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                        by {sub.evaluatorVerifiedByName}
+                                      </span>
+                                    )}
                                   </div>
+
                                   <p className="muted" style={{ fontSize: '0.8rem', margin: 0 }}>
-                                    Category: {catObj?.category || 'General'} | Item: {itemObj?.title || sub.description} | Class: {studentObj?.className || 'Unknown'}
+                                    Category: {catObj?.category || 'General'} | Item: {itemObj?.title || sub.description} | Class: {studentObj?.className || sub.className || 'Unknown'}
                                   </p>
+
+                                  {(sub.evaluatorRemarks || sub.remarks) && (
+                                    <div style={{ fontSize: '0.78rem', color: '#334155', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '6px', marginTop: '6px', display: 'inline-block' }}>
+                                      <span style={{ fontWeight: 700 }}>Feedback:</span> "{sub.evaluatorRemarks || sub.remarks}"
+                                    </div>
+                                  )}
+
                                   {sub.proof && (
                                     <div style={{ fontSize: '0.76rem', marginTop: '4px' }}>
-                                      Proof: <a href={isDriveUrl ? sub.proof : `/Assets/Proofs/${sub.proof}`} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 700 }}>{sub.proof}</a>
+                                      Proof: <a href={isDriveUrl ? sub.proof : `/Assets/Proofs/${sub.proof}`} target="_blank" rel="noreferrer" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>{sub.proof}</a>
                                     </div>
                                   )}
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                  <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>{getSubmissionMarks(sub).toFixed(1)} pts</span>
-                                  {activeTab === 'pending' && (
-                                    <button
-                                      className="btn btn-sm btn-primary"
-                                      style={{ background: '#4f46e5', color: '#ffffff', fontWeight: 800 }}
-                                      onClick={() => handleVerifySubmissionEvaluator(sub.id)}
-                                    >
-                                      Verify & Lock (Round 3)
-                                    </button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                  <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                                    {getSubmissionMarks(sub).toFixed(1)} pts
+                                  </span>
+
+                                  {/* Preview & Decide Button */}
+                                  <button
+                                    onClick={() => handleOpenPreview(sub)}
+                                    title="Inspect document and record evaluation decision"
+                                    style={{
+                                      background: '#e0e7ff',
+                                      color: '#4338ca',
+                                      border: 'none',
+                                      borderRadius: '8px',
+                                      padding: '6px 12px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    👁️ Review
+                                  </button>
+
+                                  {/* Action Controls for Pending Submissions */}
+                                  {isPendingReview ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <input
+                                        id={`evaluator-remarks-${sub.id}`}
+                                        type="text"
+                                        placeholder="Add feedback / reason..."
+                                        value={submissionRemarksMap[sub.id] || ''}
+                                        onChange={(e) =>
+                                          setSubmissionRemarksMap({
+                                            ...submissionRemarksMap,
+                                            [sub.id]: e.target.value
+                                          })
+                                        }
+                                        style={{
+                                          padding: '6px 12px',
+                                          borderRadius: '8px',
+                                          border: '1px solid #cbd5e1',
+                                          fontSize: '0.8rem',
+                                          background: '#ffffff',
+                                          minWidth: '180px'
+                                        }}
+                                      />
+                                      <button
+                                        className="btn btn-sm"
+                                        style={{ background: '#4f46e5', color: '#ffffff', fontWeight: 800, padding: '6px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)' }}
+                                        onClick={() => handleVerifySubmissionEvaluator(sub.id)}
+                                      >
+                                        ✓ Verify & Lock
+                                      </button>
+                                      <button
+                                        className="btn btn-sm"
+                                        style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 800, padding: '6px 10px', borderRadius: '8px', cursor: 'pointer' }}
+                                        onClick={() => handleCorrectionSubmissionEvaluator(sub.id)}
+                                      >
+                                        ⚠️ Correction
+                                      </button>
+                                      <button
+                                        className="btn btn-sm"
+                                        style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', fontWeight: 800, padding: '6px 10px', borderRadius: '8px', cursor: 'pointer' }}
+                                        onClick={() => handleRejectSubmissionEvaluator(sub.id)}
+                                      >
+                                        ✗ Reject
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+                                      Decision recorded
+                                    </span>
                                   )}
                                 </div>
                               </div>
                             );
                           })}
 
-                          {(activeTab === 'pending' ? teacherApprovedSubmissions : verifiedSubmissions).filter(sub => {
+                          {(activeTab === 'pending'
+                            ? teacherApprovedSubmissions
+                            : activeTab === 'completed'
+                            ? filteredCompletedSubmissions
+                            : assignedSubmissions
+                          ).filter(sub => {
                                const studentObj = students.find((s) => s.id === sub.studentId);
                                const matchesDept = getStudentDept(studentObj, sub) === dept.name;
                                const matchesClass = selectedClass === 'All Classes' || (studentObj?.className === selectedClass || sub.className === selectedClass);
@@ -957,7 +1388,9 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
                                );
                                return matchesDept && matchesClass && matchesSearch;
                           }).length === 0 && (
-                            <p className="muted" style={{ fontSize: '0.84rem', margin: 0, textAlign: 'center' }}>No {activeTab} verification files for this department.</p>
+                            <p className="muted" style={{ fontSize: '0.84rem', margin: 0, textAlign: 'center', padding: '16px 0' }}>
+                              No {activeTab} verification files found for this department.
+                            </p>
                           )}
                         </div>
                       </div>
@@ -977,6 +1410,288 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
             <button className="btn btn-secondary btn-sm" disabled style={{ opacity: 0.6 }}>Prev</button>
             <button className="btn btn-sm btn-primary">1</button>
             <button className="btn btn-secondary btn-sm" disabled style={{ opacity: 0.6 }}>Next</button>
+          </div>
+        </div>
+      )}
+
+      {/* DOCUMENT PREVIEW & DECISION MODAL (MATCHING CLASS TEACHER WINDOW) */}
+      {previewModalDoc && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: '20px'
+          }}
+          onClick={() => setPreviewModalDoc(null)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '24px',
+              maxWidth: '640px',
+              width: '100%',
+              boxShadow: '0 30px 70px rgba(0,0,0,0.3)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '90vh'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '20px 26px',
+                borderBottom: '1px solid #f1f5f9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#f8fafc'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span
+                  style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '10px',
+                    background: '#e0e7ff',
+                    color: '#4338ca',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </span>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Submission Details</h3>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0 0' }}>Review document and record evaluation decision (Round 3)</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPreviewModalDoc(null)}
+                style={{
+                  background: '#e2e8f0',
+                  border: 'none',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#475569',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px 26px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {/* Document Banner Box */}
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '16px',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '16px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '12px',
+                      background: '#fee2e2',
+                      color: '#dc2626',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.4rem'
+                    }}
+                  >
+                    📄
+                  </div>
+                  <div>
+                    <strong style={{ fontSize: '0.92rem', color: '#0f172a', display: 'block' }}>
+                      {previewModalDoc.fileName}
+                    </strong>
+                    <span style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                      Submitted {previewModalDoc.date || 'Recent'} • Institutional Proof
+                    </span>
+                  </div>
+                </div>
+
+                <a
+                  href={previewModalDoc.proofUrl || `/Assets/Proofs/${previewModalDoc.fileName}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    background: '#f1f5f9',
+                    color: '#334155',
+                    border: '1px solid #cbd5e1',
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  Open Proof ↗
+                </a>
+              </div>
+
+              {/* Student Profile Row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '12px 18px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #4f46e5, #3730a3)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1rem' }}>
+                    {previewModalDoc.studentName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '0.94rem', fontWeight: 800, color: '#0f172a' }}>{previewModalDoc.studentName}</h4>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>{previewModalDoc.studentEmail} • {previewModalDoc.studentClass} ({previewModalDoc.studentDept})</p>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ background: '#dbeafe', color: '#1e40af', padding: '3px 10px', borderRadius: '9999px', fontSize: '0.74rem', fontWeight: 800 }}>
+                    {previewModalDoc.category}
+                  </span>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#4f46e5', marginTop: '4px' }}>
+                    +{previewModalDoc.marks?.toFixed(1) ?? '0.0'} Points
+                  </div>
+                </div>
+              </div>
+
+              {/* Claim Details */}
+              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px' }}>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: '4px' }}>
+                  Activity / Claim Description
+                </span>
+                <strong style={{ fontSize: '0.9rem', color: '#0f172a', display: 'block', marginBottom: '4px' }}>
+                  {previewModalDoc.activityTitle}
+                </strong>
+                <p style={{ fontSize: '0.82rem', color: '#475569', margin: 0 }}>
+                  {previewModalDoc.description || 'Valid institutional proof submitted for evaluation.'}
+                </p>
+              </div>
+
+              {/* Feedback / Remarks textarea */}
+              <div>
+                <label style={{ fontSize: '0.76rem', color: '#475569', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: '6px' }}>
+                  Remarks / Feedback (Required for Correction / Reject)
+                </label>
+                <textarea
+                  id="modal-remarks-textarea"
+                  className="input"
+                  rows={2}
+                  placeholder="Enter evaluation notes or correction instructions for the student..."
+                  value={modalRemarks}
+                  onChange={(e) => setModalRemarks(e.target.value)}
+                  style={{ borderRadius: '12px', padding: '10px 14px', width: '100%', fontSize: '0.88rem', resize: 'none' }}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer with 3 Action Buttons */}
+            <div
+              style={{
+                padding: '18px 26px',
+                borderTop: '1px solid #f1f5f9',
+                background: '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px'
+              }}
+            >
+              <button
+                onClick={() => handleModalAction('Rejected')}
+                style={{
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fca5a5',
+                  padding: '10px 18px',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <span>✗</span> Reject
+              </button>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => handleModalAction('Correction Requested')}
+                  style={{
+                    background: '#fef3c7',
+                    color: '#b45309',
+                    border: '1px solid #fcd34d',
+                    padding: '10px 18px',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span>⚠️</span> Correction
+                </button>
+
+                <button
+                  onClick={() => handleModalAction('Approved')}
+                  style={{
+                    background: '#4f46e5',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '10px 22px',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span>✓</span> Verify & Lock
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -137,7 +137,8 @@ export const SubmissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           status: newSub.status || 'Pending Rep Verification',
           remarks: newSub.remarks || '',
           marks: newSub.marks || null,
-          proof: newSub.proof || newSub.proofUrl || '',
+          proof: newSub.proof || newSub.proofUrl || (newSub as any).proof_url || '',
+          proof_url: (newSub as any).proof_url || newSub.proof || newSub.proofUrl || '',
           eventId: newSub.eventId || '',
           start_date: newSub.startDate || '',
           end_date: newSub.endDate || '',
@@ -176,7 +177,8 @@ export const SubmissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           remarks: updates.remarks,
           marks: updates.marks,
           calculated_marks: updates.calculated_marks ?? updates.calculatedMarks,
-          proof: updates.proof ?? updates.proofUrl,
+          proof: updates.proof ?? updates.proofUrl ?? (updates as any).proof_url,
+          proof_url: (updates as any).proof_url ?? updates.proof ?? updates.proofUrl,
           eventId: updates.eventId,
           start_date: updates.startDate,
           end_date: updates.endDate,
@@ -190,6 +192,11 @@ export const SubmissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           repRemarks: updates.repRemarks,
           evaluatorVerifiedByName: updates.evaluatorVerifiedByName,
           evaluatorRemarks: updates.evaluatorRemarks,
+          role_context: (updates as any).role_context || (
+            (updates.evaluatorVerifiedByName || updates.evaluatorRemarks || updates.evaluatorVerified || updates.status === 'Evaluated')
+              ? 'evaluator'
+              : (updates.teacherVerifiedByName || updates.teacherRemarks || updates.status === 'Teacher Verified' ? 'teacher' : undefined)
+          ),
         };
 
         const updatedSub = await apiClient.put(`/submissions/${id}/`, payload);

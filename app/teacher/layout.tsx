@@ -46,7 +46,6 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const teacherNav = [
     { id: 'dashboard', label: 'Dashboard', href: '/teacher/dashboard' },
     { id: 'verification', label: 'Verification Desk', href: '/teacher/verification' },
-    { id: 'student-management', label: 'Student Management', href: '/teacher/student-management' },
     { id: 'profile', label: 'My Profile', href: '/teacher/profile' },
   ];
 

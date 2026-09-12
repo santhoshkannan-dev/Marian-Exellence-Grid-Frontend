@@ -616,26 +616,6 @@ export const policyCategories: PolicyCategory[] = [
           { label: "<40%", mark: 1 },
         ],
       },
-      {
-        title: "LinkedIn — Skill Badges",
-        rows: [
-          { label: "≥90%", mark: 5 },
-          { label: "80–89%", mark: 4 },
-          { label: "60–79%", mark: 3 },
-          { label: "40–59%", mark: 2 },
-          { label: "<40%", mark: 1 },
-        ],
-      },
-      {
-        title: "LinkedIn — Micro-credentials",
-        rows: [
-          { label: "≥90%", mark: 5 },
-          { label: "80–89%", mark: 4 },
-          { label: "60–79%", mark: 3 },
-          { label: "40–59%", mark: 2 },
-          { label: "<40%", mark: 1 },
-        ],
-      },
     ],
 
     notes: [

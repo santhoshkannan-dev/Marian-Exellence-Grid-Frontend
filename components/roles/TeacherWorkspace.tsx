@@ -7,7 +7,7 @@ import { Student, Submission } from '@/data/initialData';
 import { toast } from 'react-toastify';
 
 interface TeacherWorkspaceProps {
-  view?: 'dashboard' | 'verification' | 'student-management' | 'profile';
+  view?: 'dashboard' | 'verification' | 'profile';
 }
 
 interface VerificationDocItem {
@@ -34,8 +34,6 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     updateSubmission,
     evaluationOpen,
     students,
-    addStudent,
-    deleteStudent,
     activePage,
     setActivePage,
     criteriaCatalog,
@@ -99,21 +97,9 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
   // Bulk Selection for Verification Desk
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
 
-  // Student Management Form States
-  const [newStudentName, setNewStudentName] = useState('');
-  const [newStudentEmail, setNewStudentEmail] = useState('');
-  const [studentManagementPage, setStudentManagementPage] = useState(1);
-  const studentPageSize = 5;
 
-  // CSV Bulk Upload
-  const [csvFile, setCsvFile] = useState<string>('');
 
-  // AI / Quick prompt search in student progress
-  const [quickPrompt, setQuickPrompt] = useState('');
-  const [activeInsight, setActiveInsight] = useState<string | null>(null);
 
-  // Dashboard Student Progress Search
-  const [dashboardStudentSearch, setDashboardStudentSearch] = useState('');
 
   // ----------------------------------------------------
   // CLASS STUDENTS & CLASS SUBMISSIONS
@@ -152,14 +138,14 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
   // teacherClassObject merges currentUserInfo.assigned_class (from auth/user profile) with matching catalog class
   const teacherClassObject = currentUserInfo?.assigned_class
     ? {
-        ...matchedCatalogClass,
-        ...currentUserInfo.assigned_class,
-        name: currentUserInfo.assigned_class.name || matchedCatalogClass?.name || teacherClass,
-        department: currentUserInfo.assigned_class.department || matchedCatalogClass?.department,
-        num_students: currentUserInfo.assigned_class.num_students ?? matchedCatalogClass?.num_students,
-        class_teacher_name: currentUserInfo.assigned_class.class_teacher_name || matchedCatalogClass?.classTeacherName || currentUserInfo?.name,
-        dqc_member_name: currentUserInfo.assigned_class.dqc_member_name || matchedCatalogClass?.dqcMemberName,
-      }
+      ...matchedCatalogClass,
+      ...currentUserInfo.assigned_class,
+      name: currentUserInfo.assigned_class.name || matchedCatalogClass?.name || teacherClass,
+      department: currentUserInfo.assigned_class.department || matchedCatalogClass?.department,
+      num_students: currentUserInfo.assigned_class.num_students ?? matchedCatalogClass?.num_students,
+      class_teacher_name: currentUserInfo.assigned_class.class_teacher_name || matchedCatalogClass?.classTeacherName || currentUserInfo?.name,
+      dqc_member_name: currentUserInfo.assigned_class.dqc_member_name || matchedCatalogClass?.dqcMemberName,
+    }
     : (matchedCatalogClass || null);
 
   const teacherDepartment =
@@ -241,8 +227,8 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
   // METRIC COUNTS
   // ----------------------------------------------------
   const totalSubmissionsDisplay = classSubmissions.length.toString();
-  const verifiedDisplay = classSubmissions.filter(s => ['Approved', 'Verified', 'Evaluated', 'Locked'].includes(s.status)).length.toString();
-  
+  const verifiedDisplay = classSubmissions.filter(s => ['Approved', 'Verified', 'Teacher Verified', 'Evaluated', 'Locked'].includes(s.status)).length.toString();
+
   const getSubmissionPoints = (s: Submission) => {
     if (s.marks !== null && s.marks !== undefined && !isNaN(Number(s.marks))) {
       return Number(s.marks);
@@ -276,7 +262,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
   // Calculate total raw points earned by class from evaluated/locked submissions (S)
   const classTotalScore = classSubmissions.reduce((sum, s) => {
-    if (['Approved', 'Verified', 'Evaluated', 'Locked'].includes(s.status)) {
+    if (['Approved', 'Verified', 'Teacher Verified', 'Evaluated', 'Locked'].includes(s.status)) {
       return sum + getSubmissionPoints(s);
     }
     return sum;
@@ -284,12 +270,11 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
   // ----------------------------------------------------
   // MODERATION FORMULA M (INDEX) CALCULATION
-  // Formula: M = max(0, (S - P) + Mod) / N
-  //   where Mod = min(200, max(0, 2 * (N - n)))
-  //   S = sum of marks on evaluated/locked submissions
-  //   P = Class.negative_points (penalties)
-  //   N = Class.num_students (class size)
-  //   n = smallestClassSize (benchmark, default 20)
+  // Formula: M = (S − P) / N² × (1 + 100 × (N − n))
+  //   where S = Evaluated Marks
+  //   P = Penalties (defined in department management)
+  //   N = Class Size (defined in department management)
+  //   n = 0 (Smallest Class Benchmark defined in department management)
   // ----------------------------------------------------
   const classN = matchingClassIndexEntry?.N && matchingClassIndexEntry.N > 0
     ? matchingClassIndexEntry.N
@@ -303,15 +288,16 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
   const benchmarkN = matchingClassIndexEntry?.n !== undefined
     ? matchingClassIndexEntry.n
-    : (smallestClassSize || 20);
+    : (smallestClassSize ?? 0);
 
   const classS = matchingClassIndexEntry?.S !== undefined
     ? matchingClassIndexEntry.S
     : classTotalScore;
 
-  const computedMod = Math.min(200, Math.max(0, 2 * (classN - benchmarkN)));
-  const computedTotal = Math.max(0, (classS - classP) + computedMod);
-  const computedM = classN > 0 ? (computedTotal / classN) : 0;
+  const diff = classN - benchmarkN;
+  const computedM = classN > 0
+    ? Math.max(0, ((classS - classP) / (classN * classN)) * (1 + 100 * diff))
+    : 0;
 
   const moderatedM = matchingClassIndexEntry && matchingClassIndexEntry.M !== null && matchingClassIndexEntry.M !== undefined
     ? matchingClassIndexEntry.M
@@ -356,18 +342,18 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
   // Category-wise colour palette for the breakdown chips
   const categoryChipColors: Record<string, { bg: string; color: string }> = {
-    'Academics':           { bg: '#eff6ff', color: '#1d4ed8' },
-    'Online Courses':      { bg: '#f0fdf4', color: '#15803d' },
-    'Internships':         { bg: '#fdf4ff', color: '#7e22ce' },
-    'Competitive Exams':   { bg: '#fff7ed', color: '#c2410c' },
-    'Scholarships':        { bg: '#fefce8', color: '#854d0e' },
-    'Research':            { bg: '#f0f9ff', color: '#0369a1' },
-    'Prizes':              { bg: '#fff1f2', color: '#be123c' },
-    'Leadership':          { bg: '#faf5ff', color: '#6d28d9' },
-    'Programs Organized':  { bg: '#f0fdfa', color: '#0f766e' },
-    'Social Responsibility':{ bg: '#ecfdf5', color: '#047857' },
-    'Career Advancement':  { bg: '#fff8f1', color: '#9a3412' },
-    'Documentation':       { bg: '#f8fafc', color: '#475569' },
+    'Academics': { bg: '#eff6ff', color: '#1d4ed8' },
+    'Online Courses': { bg: '#f0fdf4', color: '#15803d' },
+    'Internships': { bg: '#fdf4ff', color: '#7e22ce' },
+    'Competitive Exams': { bg: '#fff7ed', color: '#c2410c' },
+    'Scholarships': { bg: '#fefce8', color: '#854d0e' },
+    'Research': { bg: '#f0f9ff', color: '#0369a1' },
+    'Prizes': { bg: '#fff1f2', color: '#be123c' },
+    'Leadership': { bg: '#faf5ff', color: '#6d28d9' },
+    'Programs Organized': { bg: '#f0fdfa', color: '#0f766e' },
+    'Social Responsibility': { bg: '#ecfdf5', color: '#047857' },
+    'Career Advancement': { bg: '#fff8f1', color: '#9a3412' },
+    'Documentation': { bg: '#f8fafc', color: '#475569' },
   };
 
   // Recent Student Progress list with Recently Submitted Document
@@ -379,8 +365,8 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
       return false;
     });
 
-    const verifiedPoints = studentSubs.filter(s => ['Approved', 'Verified', 'Evaluated', 'Locked'].includes(s.status)).reduce((sum, s) => {
-       return sum + getSubmissionPoints(s);
+    const verifiedPoints = studentSubs.filter(s => ['Approved', 'Verified', 'Teacher Verified', 'Evaluated', 'Locked'].includes(s.status)).reduce((sum, s) => {
+      return sum + getSubmissionPoints(s);
     }, 0);
     const percent = Math.min(100, Math.round((verifiedPoints / 20) * 100)); // Target 20 per student
 
@@ -397,14 +383,14 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     let recentDoc = '';
     let recentActivity = '';
     if (recentSub) {
-       const docRaw = recentSub.proof || recentSub.proofUrl || (recentSub as any).proof_url || '';
-       if (docRaw && isNaN(Number(docRaw)) && docRaw.length > 2) {
-         recentDoc = docRaw.split('/').pop() || docRaw;
-       } else {
-         recentDoc = `Proof_Sub#${recentSub.id}.pdf`;
-       }
-       const criteriaItem = criteriaCatalog.flatMap((c) => c.items).find((it) => String(it.id) === String(recentSub.criteriaId));
-       recentActivity = criteriaItem?.title || recentSub.description || 'Verified Claim';
+      const docRaw = recentSub.proof || recentSub.proofUrl || (recentSub as any).proof_url || '';
+      if (docRaw && isNaN(Number(docRaw)) && docRaw.length > 2) {
+        recentDoc = docRaw.split('/').pop() || docRaw;
+      } else {
+        recentDoc = `Proof_Sub#${recentSub.id}.pdf`;
+      }
+      const criteriaItem = criteriaCatalog.flatMap((c) => c.items).find((it) => String(it.id) === String(recentSub.criteriaId));
+      recentActivity = criteriaItem?.title || recentSub.description || 'Verified Claim';
     }
 
     // Build category-wise submission counts
@@ -414,7 +400,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
       const cat = catEntry ? catEntry.category : ((sub as any).categoryName || (sub as any).category || 'Academics');
       if (!categoryCountMap[cat]) categoryCountMap[cat] = { submitted: 0, approved: 0 };
       categoryCountMap[cat].submitted += 1;
-      if (['Approved', 'Verified', 'Evaluated', 'Locked'].includes(sub.status)) {
+      if (['Approved', 'Verified', 'Teacher Verified', 'Evaluated', 'Locked'].includes(sub.status)) {
         categoryCountMap[cat].approved += 1;
       }
     });
@@ -443,17 +429,9 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     return a.name.localeCompare(b.name);
   });
 
-  // Filter by dashboard search
-  if (dashboardStudentSearch.trim()) {
-    displayProgressStudents = displayProgressStudents.filter(s =>
-      s.name.toLowerCase().includes(dashboardStudentSearch.toLowerCase()) ||
-      s.recentDoc.toLowerCase().includes(dashboardStudentSearch.toLowerCase())
-    );
-  } else {
-    // If some students have submissions, prioritize showing them first
-    const withSubs = displayProgressStudents.filter(s => s.totalSubs > 0);
-    displayProgressStudents = withSubs.length > 0 ? withSubs.slice(0, 6) : displayProgressStudents.slice(0, 6);
-  }
+  // If some students have submissions, prioritize showing them first
+  const withSubs = displayProgressStudents.filter(s => s.totalSubs > 0);
+  displayProgressStudents = withSubs.length > 0 ? withSubs.slice(0, 6) : displayProgressStudents.slice(0, 6);
 
   // Merge pending submissions with friendly filenames
   const pendingSubs = classSubmissions.filter((s) =>
@@ -464,22 +442,22 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
   const queueList: VerificationDocItem[] = pendingSubs.length > 0
     ? pendingSubs.map((s, idx) => {
-        const student = classStudents.find((st) => st.id === s.studentId) || realStudents.find((st) => st.id === s.studentId);
-        let nameToDisplay = s.proof && s.proof.includes('.') ? s.proof : `Assignment_Final_v${idx + 2}.pdf`;
-        const criteriaItem = criteriaCatalog.flatMap((c) => c.items).find((it) => String(it.id) === String(s.criteriaId));
-        const categoryItem = criteriaCatalog.find((c) => c.items.some((it) => String(it.id) === String(s.criteriaId)));
-        return {
-          id: s.id,
-          fileName: nameToDisplay,
-          studentName: student ? student.name : ((s as any).user_name || 'Unknown Student'),
-          activityTitle: criteriaItem?.title || s.description || 'Verified Claim',
-          category: categoryItem?.category || 'Academics',
-          description: s.description || 'Verified class evaluation claim submitted with valid institutional proof.',
-          marks: getSubmissionPoints(s) || (criteriaItem?.marks || 5),
-          date: (s as any).date || '11 Aug 2026, 02:45 PM',
-          subId: s.id
-        };
-      })
+      const student = classStudents.find((st) => st.id === s.studentId) || realStudents.find((st) => st.id === s.studentId);
+      let nameToDisplay = s.proof && s.proof.includes('.') ? s.proof : `Assignment_Final_v${idx + 2}.pdf`;
+      const criteriaItem = criteriaCatalog.flatMap((c) => c.items).find((it) => String(it.id) === String(s.criteriaId));
+      const categoryItem = criteriaCatalog.find((c) => c.items.some((it) => String(it.id) === String(s.criteriaId)));
+      return {
+        id: s.id,
+        fileName: nameToDisplay,
+        studentName: student ? student.name : ((s as any).user_name || 'Unknown Student'),
+        activityTitle: criteriaItem?.title || s.description || 'Verified Claim',
+        category: categoryItem?.category || 'Academics',
+        description: s.description || 'Verified class evaluation claim submitted with valid institutional proof.',
+        marks: getSubmissionPoints(s) || (criteriaItem?.marks || 5),
+        date: (s as any).date || '11 Aug 2026, 02:45 PM',
+        subId: s.id
+      };
+    })
     : [];
 
   const currentQueueDoc = queueList.length > 0 ? queueList[queueIndex % queueList.length] : { id: 0, fileName: 'No Pending Documents', studentName: '-', activityTitle: '-', category: 'N/A' };
@@ -489,7 +467,8 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
   const handleQuickApprove = () => {
     if (currentQueueDoc.subId) {
       updateSubmission(currentQueueDoc.subId, {
-        status: 'Approved',
+        status: 'Teacher Verified',
+        teacherVerifiedByName: teacherName,
         verifiedByName: teacherName,
         remarks: 'Verified & Approved via Quick Verification Queue'
       });
@@ -520,20 +499,24 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     if (previewModalDoc.isBulk && previewModalDoc.pendingIds) {
       let count = 0;
       previewModalDoc.pendingIds.forEach((id) => {
+        const nextStatus = status === 'Approved' ? 'Teacher Verified' : status;
         updateSubmission(id, {
-          status,
+          status: nextStatus,
+          teacherVerifiedByName: teacherName,
           verifiedByName: teacherName,
           remarks: modalRemarks || (status === 'Approved' ? 'Verified & Approved by Class Advisor' : status === 'Rejected' ? 'Rejected by Class Advisor' : 'Correction required by Class Advisor')
         });
         count++;
       });
-      
+
       if (status === 'Approved') showToast(`✓ Bulk Approved ${count} submissions`);
       else if (status === 'Rejected') showToast(`✗ Bulk Rejected ${count} submissions`);
       else showToast(`⚠️ Bulk Correction requested for ${count} submissions`);
     } else if (previewModalDoc.subId) {
+      const nextStatus = status === 'Approved' ? 'Teacher Verified' : status;
       updateSubmission(previewModalDoc.subId, {
-        status,
+        status: nextStatus,
+        teacherVerifiedByName: teacherName,
         verifiedByName: teacherName,
         remarks: modalRemarks || (status === 'Approved' ? 'Verified & Approved by Class Advisor' : status === 'Rejected' ? 'Rejected by Class Advisor' : 'Correction required by Class Advisor')
       });
@@ -576,7 +559,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
   // Calculate status counts for filter buttons based on submissions
   const pendingCount = classSubmissions.filter((s) => ['Student Rep Verified', 'Verified by Student Rep'].includes(s.status)).length;
-  const completedCount = classSubmissions.filter((s) => ['Approved', 'Verified', 'Evaluated', 'Locked', 'Correction Requested', 'Rejected'].includes(s.status)).length;
+  const completedCount = classSubmissions.filter((s) => ['Approved', 'Verified', 'Teacher Verified', 'Evaluated', 'Locked', 'Correction Requested', 'Rejected'].includes(s.status)).length;
   const allCount = classSubmissions.length;
 
   // Filtered submissions list for verification desk
@@ -593,7 +576,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
       (sub.description || '').toLowerCase().includes(studentSearch.toLowerCase());
 
     const isPending = ['Student Rep Verified', 'Verified by Student Rep'].includes(sub.status);
-    const isCompleted = ['Approved', 'Verified', 'Evaluated', 'Locked', 'Correction Requested', 'Rejected'].includes(sub.status);
+    const isCompleted = ['Approved', 'Verified', 'Teacher Verified', 'Evaluated', 'Locked', 'Correction Requested', 'Rejected'].includes(sub.status);
 
     const matchesStatus =
       statusFilter === 'all' ||
@@ -655,11 +638,12 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
       const sub = classSubmissions.find((s) => s.id === subId);
       if (sub && ['Student Rep Verified', 'Verified by Student Rep'].includes(sub.status)) {
         updateSubmission(subId, {
-          status: 'Approved',
+          status: 'Teacher Verified',
           teacherVerifiedByName: teacherName,
           teacherRemarks: 'Bulk Approved by Class Advisor',
           remarks: 'Verified & Approved by Class Advisor'
         });
+        totalApproved++;
       }
     });
 
@@ -671,61 +655,9 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
     setSelectedStudentIds([]);
   };
 
-  const handleApproveAllPending = () => {
-    if (!evaluationOpen) {
-      toast.error('Evaluation access is currently CLOSED by system administrator.');
-      return;
-    }
-    const pendingSubsToApprove = submissions.filter(
-      (s) => ['Student Rep Verified', 'Verified by Student Rep'].includes(s.status) &&
-      classStudents.some((stud) => stud.id === s.studentId)
-    );
 
-    if (pendingSubsToApprove.length === 0) {
-      showToast('No pending submissions found to approve.');
-      return;
-    }
 
-    pendingSubsToApprove.forEach((sub) => {
-      updateSubmission(sub.id, {
-        status: 'Approved',
-        verifiedByName: teacherName,
-        remarks: 'Bulk approved by Class Advisor'
-      });
-    });
 
-    showToast(`✓ Approved all ${pendingSubsToApprove.length} pending submission(s) across class!`);
-    setSelectedStudentIds([]);
-  };
-
-  const handleManualAddStudent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStudentName.trim() || !newStudentEmail.trim()) return;
-
-    addStudent({
-      name: newStudentName,
-      email: newStudentEmail,
-      className: teacherClass || 'Assigned Class'
-    });
-
-    setNewStudentName('');
-    setNewStudentEmail('');
-    showToast(`Student ${newStudentName} added successfully.`);
-  };
-
-  const handleCSVUpload = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success('Simulated Import: 3 students parsed from CSV and added successfully!');
-    addStudent({ name: 'Bhavya Sharma', className: teacherClass || 'Assigned Class' });
-    addStudent({ name: 'Chitra Sharma', className: teacherClass || 'Assigned Class' });
-    showToast('Students imported from CSV successfully.');
-  };
-
-  const totalStudentPages = Math.ceil(classStudents.length / studentPageSize) || 1;
-  const paginatedStudents = classStudents.slice(
-    (studentManagementPage - 1) * studentPageSize,
-    studentManagementPage * studentPageSize
-  );
 
   return (
     <div style={{ position: 'relative', minHeight: '85vh' }}>
@@ -1593,23 +1525,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                   </button>
                 </div>
 
-                {/* Search Bar for Student Progress */}
-                <div style={{ marginBottom: '4px' }}>
-                  <input
-                    type="text"
-                    placeholder="Search student by name..."
-                    value={dashboardStudentSearch}
-                    onChange={(e) => setDashboardStudentSearch(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      border: '1px solid #e2e8f0',
-                      fontSize: '0.9rem',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
+
 
                 {/* Student Progress List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1764,103 +1680,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                   )}
                 </div>
 
-                {/* Bottom Quick Assistant / Grade Distribution bar matching screenshot */}
-                <div
-                  style={{
-                    marginTop: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '8px 14px',
-                    borderRadius: '16px',
-                    background: '#f8fafc',
-                    border: '1.5px solid #e2e8f0'
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '8px',
-                      background: '#e2e8f0',
-                      color: '#64748b',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    1
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Show a detailed grade distribution c..."
-                    value={quickPrompt}
-                    onChange={(e) => setQuickPrompt(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        setActiveInsight(quickPrompt || 'Grade distribution: 14 students (A+), 8 students (A), 3 pending.');
-                        showToast('Class performance breakdown generated');
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      border: 'none',
-                      background: 'transparent',
-                      outline: 'none',
-                      fontSize: '0.88rem',
-                      color: '#0f172a',
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                  <span
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '8px',
-                      background: '#e2e8f0',
-                      color: '#64748b',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => {
-                      setActiveInsight('Grade distribution: 14 students (A+), 8 students (A), 3 pending.');
-                      showToast('Class performance breakdown generated');
-                    }}
-                  >
-                    2
-                  </span>
-                </div>
 
-                {activeInsight && (
-                  <div
-                    style={{
-                      padding: '12px 16px',
-                      borderRadius: '12px',
-                      background: '#eff6ff',
-                      color: '#1e40af',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      border: '1px solid #bfdbfe',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <span>📊 {activeInsight}</span>
-                    <button
-                      onClick={() => setActiveInsight(null)}
-                      style={{ background: 'none', border: 'none', color: '#1e40af', cursor: 'pointer', fontWeight: 700 }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
               </div>
 
               {/* Right Column: Verification Queue */}
@@ -1937,8 +1757,10 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
 
                           {/* Student name + category */}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a',
-                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{
+                              fontSize: '0.88rem', fontWeight: 700, color: '#0f172a',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                            }}>
                               {doc.studentName}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
@@ -1979,7 +1801,8 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                                 e.stopPropagation();
                                 if (doc.subId) {
                                   updateSubmission(doc.subId, {
-                                    status: 'Approved',
+                                    status: 'Teacher Verified',
+                                    teacherVerifiedByName: teacherName,
                                     verifiedByName: teacherName,
                                     remarks: 'Approved via Quick Queue'
                                   });
@@ -2003,31 +1826,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                   </div>
                 )}
 
-                {/* Bulk approve all button */}
-                {queueList.length > 0 && (
-                  <button
-                    onClick={handleApproveAllPending}
-                    style={{
-                      width: '100%',
-                      background: '#047857',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '12px',
-                      padding: '12px 18px',
-                      fontSize: '0.9rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 2px 8px rgba(4, 120, 87, 0.2)',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <span>✓</span> Approve All ({queueList.length})
-                  </button>
-                )}
+
               </div>
             </div>
           </div>
@@ -2352,7 +2151,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                       const studentObj = classStudents.find((s) => s.id === sub.studentId) || realStudents.find((st) => st.id === sub.studentId);
                       const displayName = studentObj ? studentObj.name : ((sub as any).user_name || `Student #${sub.studentId}`);
                       const displayClass = studentObj?.className || teacherClass;
-                      
+
                       const item = criteriaCatalog.flatMap((c) => c.items).find((i) => i.id === sub.criteriaId);
                       const cat = criteriaCatalog.find((c) => c.items.some((i) => i.id === sub.criteriaId));
                       const isDriveUrl = sub.proof?.startsWith('http://') || sub.proof?.startsWith('https://');
@@ -2363,8 +2162,8 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                       const canVerify = ['Student Rep Verified', 'Verified by Student Rep'].includes(sub.status);
 
                       const getStatusBadgeStyle = (st: string) => {
-                        if (['Approved', 'Verified', 'Evaluated', 'Locked'].includes(st)) {
-                          return { bg: '#dcfce7', color: '#15803d', label: 'Approved' };
+                        if (['Approved', 'Verified', 'Teacher Verified', 'Evaluated', 'Locked'].includes(st)) {
+                          return { bg: '#dcfce7', color: '#15803d', label: st === 'Teacher Verified' ? 'Teacher Verified' : 'Approved' };
                         }
                         if (st === 'Rejected') {
                           return { bg: '#fee2e2', color: '#dc2626', label: 'Rejected' };
@@ -2482,7 +2281,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                                     onClick={() => {
                                       const teacherRemarks = submissionRemarksMap[sub.id] || 'Verified & Approved by Class Advisor';
                                       updateSubmission(sub.id, {
-                                        status: 'Approved',
+                                        status: 'Teacher Verified',
                                         teacherVerifiedByName: teacherName,
                                         teacherRemarks,
                                         remarks: teacherRemarks
@@ -2534,8 +2333,8 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
                               </div>
                             ) : (
                               <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                <span style={{ color: ['Approved', 'Verified', 'Evaluated', 'Locked'].includes(sub.status) ? '#16a34a' : '#1e40af' }}>
-                                  {sub.status === 'Approved' ? '✓ Evaluated' : 'Reviewed'}
+                                <span style={{ color: ['Approved', 'Verified', 'Teacher Verified', 'Evaluated', 'Locked'].includes(sub.status) ? '#16a34a' : '#1e40af' }}>
+                                  {sub.status === 'Approved' ? '✓ Evaluated' : sub.status === 'Teacher Verified' ? '✓ Teacher Verified' : 'Reviewed'}
                                 </span>
                               </div>
                             )}
@@ -2592,190 +2391,7 @@ export const TeacherWorkspace: React.FC<TeacherWorkspaceProps> = ({ view }) => {
           </div>
         )}
 
-        {/* ---------------------------------------------------- */}
-        {/* TAB 3: STUDENT MANAGEMENT                           */}
-        {/* ---------------------------------------------------- */}
-        {activeTab === 'student-management' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div>
-              <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>Student Management</h1>
-              <p style={{ color: '#64748b', fontSize: '0.9rem' }}>View class list, add new students manually, or import from CSV files.</p>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.9fr', gap: '24px', alignItems: 'flex-start' }}>
-              {/* Class List Card */}
-              <div
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '20px',
-                  padding: '28px',
-                  border: '1px solid rgba(0,0,0,0.05)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
-                }}
-              >
-                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Class List</h2>
-                <div className="table-container">
-                  <table className="table" style={{ width: '100%' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ textAlign: 'left', padding: '10px 14px', color: '#64748b' }}>Name</th>
-                        <th style={{ textAlign: 'left', padding: '10px 14px', color: '#64748b' }}>Email</th>
-                        <th style={{ textAlign: 'left', padding: '10px 14px', color: '#64748b' }}>Class</th>
-                        <th style={{ textAlign: 'left', padding: '10px 14px', color: '#64748b' }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedStudents.map((s) => {
-                        const studentEmail = s.email || (s.name.toLowerCase().replace(/\s+/g, '.') + '@mariancollege.org');
-                        return (
-                          <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ fontWeight: 700, padding: '12px 14px', color: '#0f172a' }}>{s.name}</td>
-                            <td style={{ padding: '12px 14px', color: '#64748b' }}>{studentEmail}</td>
-                            <td style={{ padding: '12px 14px', color: '#475569' }}>{s.className || teacherClass || 'Assigned Class'}</td>
-                            <td style={{ padding: '12px 14px' }}>
-                              <button
-                                onClick={() => deleteStudent(s.id)}
-                                style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', padding: '4px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                <div className="pagination-container" style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                  <button
-                    className="pagination-btn"
-                    disabled={studentManagementPage <= 1}
-                    onClick={() => setStudentManagementPage((p) => Math.max(1, p - 1))}
-                    style={{ borderRadius: '8px', padding: '6px 14px' }}
-                  >
-                    Prev
-                  </button>
-                  {Array.from({ length: totalStudentPages }, (_, i) => i + 1).map((pageNum) => (
-                    <button
-                      key={pageNum}
-                      className={`pagination-num ${studentManagementPage === pageNum ? 'active' : ''}`}
-                      onClick={() => setStudentManagementPage(pageNum)}
-                      style={{ borderRadius: '8px', width: '34px', height: '34px' }}
-                    >
-                      {pageNum}
-                    </button>
-                  ))}
-                  <button
-                    className="pagination-btn"
-                    disabled={studentManagementPage >= totalStudentPages}
-                    onClick={() => setStudentManagementPage((p) => Math.min(totalStudentPages, p + 1))}
-                    style={{ borderRadius: '8px', padding: '6px 14px' }}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-
-              {/* Add & CSV Cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div
-                  style={{
-                    background: '#ffffff',
-                    borderRadius: '20px',
-                    padding: '28px',
-                    border: '1px solid rgba(0,0,0,0.05)',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
-                  }}
-                >
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '16px' }}>Manual Add Student</h3>
-                  <form onSubmit={handleManualAddStudent} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.82rem', color: '#475569' }}>Name</label>
-                      <input
-                        type="text"
-                        className="input"
-                        placeholder="Student Name"
-                        value={newStudentName}
-                        onChange={(e) => setNewStudentName(e.target.value)}
-                        required
-                        style={{ borderRadius: '10px', padding: '10px 14px' }}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.82rem', color: '#475569' }}>Email</label>
-                      <input
-                        type="email"
-                        className="input"
-                        placeholder="student@mariancollege.org"
-                        value={newStudentEmail}
-                        onChange={(e) => setNewStudentEmail(e.target.value)}
-                        required
-                        style={{ borderRadius: '10px', padding: '10px 14px' }}
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      style={{
-                        background: '#047857',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '10px',
-                        padding: '12px',
-                        fontWeight: 700,
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        marginTop: '6px'
-                      }}
-                    >
-                      Add Student
-                    </button>
-                  </form>
-                </div>
-
-                <div
-                  style={{
-                    background: '#ffffff',
-                    borderRadius: '20px',
-                    padding: '28px',
-                    border: '1px solid rgba(0,0,0,0.05)',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
-                  }}
-                >
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '16px' }}>Bulk Upload Students (CSV)</h3>
-                  <form onSubmit={handleCSVUpload} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.82rem', color: '#475569' }}>CSV File</label>
-                      <input
-                        type="file"
-                        className="input"
-                        accept=".csv"
-                        onChange={(e) => setCsvFile(e.target.value)}
-                        style={{ borderRadius: '10px', padding: '10px 14px' }}
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      style={{
-                        background: '#e2e8f0',
-                        color: '#334155',
-                        border: 'none',
-                        borderRadius: '10px',
-                        padding: '12px',
-                        fontWeight: 700,
-                        fontSize: '0.9rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Upload CSV
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ---------------------------------------------------- */}
         {/* TAB 4: MY PROFILE                                   */}

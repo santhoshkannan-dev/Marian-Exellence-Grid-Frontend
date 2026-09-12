@@ -10,6 +10,7 @@ export function DepartmentHierarchyManager() {
     classes,
     users,
     userGroups,
+    fetchUsersAndGroups,
     createDepartment,
     updateDepartment,
     deleteDepartmentById,
@@ -100,23 +101,139 @@ export function DepartmentHierarchyManager() {
   // Inline class moderation/advisor edit state: classId -> { num_students, negative_points, classTeacher }
   const [classEdits, setClassEdits] = useState<Record<number, { num_students?: number; negative_points?: number; classTeacher?: string }>>({});
 
+  // Ensure fresh user groups on mount
+  React.useEffect(() => {
+    fetchUsersAndGroups?.();
+  }, [fetchUsersAndGroups]);
+
   // Faculty and Council groups
   const classTeachersGroup = useMemo(
     () => (userGroups || []).find((g) => g.name === 'Class Teachers Council' || g.id === 'grp-class-teachers'),
     [userGroups]
   );
 
-  const availableFaculty = useMemo(() => {
+  interface CouncilMember {
+    email: string;
+    name: string;
+  }
+
+  // Extract all unique staff users belonging to Class Teachers Council
+  const councilStaffMembers = useMemo<CouncilMember[]>(() => {
+    if (!classTeachersGroup) return [];
+
+    const memberMap = new Map<string, string>();
+
+    // 1. Inspect member_details
+    if (Array.isArray(classTeachersGroup.member_details)) {
+      for (const m of classTeachersGroup.member_details) {
+        if (m && m.email) {
+          const cleanEmail = m.email.trim().toLowerCase();
+          const displayName = (m.name || '').trim();
+          if (cleanEmail) {
+            memberMap.set(cleanEmail, displayName);
+          }
+        }
+      }
+    }
+
+    // 2. Inspect emails list
+    if (Array.isArray(classTeachersGroup.emails)) {
+      for (const e of classTeachersGroup.emails) {
+        if (typeof e === 'string' && e.trim()) {
+          const cleanEmail = e.trim().toLowerCase();
+          if (!memberMap.has(cleanEmail) || !memberMap.get(cleanEmail)) {
+            memberMap.set(cleanEmail, memberMap.get(cleanEmail) || '');
+          }
+        }
+      }
+    }
+
+    // 3. Resolve display names and build final candidate list
+    const result: CouncilMember[] = [];
+    memberMap.forEach((rawName, email) => {
+      let resolvedName = rawName;
+      if (!resolvedName) {
+        const foundUser = users.find((u) => u.email && u.email.trim().toLowerCase() === email);
+        if (foundUser?.name) {
+          resolvedName = foundUser.name.trim();
+        }
+      }
+      if (!resolvedName) {
+        const prefix = email.split('@')[0] || '';
+        resolvedName = prefix
+          .split('.')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+      }
+      result.push({
+        email,
+        name: resolvedName || email,
+      });
+    });
+
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  }, [classTeachersGroup, users]);
+
+  // Fallback candidate list if council group is not yet loaded / empty
+  const candidateFaculty = useMemo<CouncilMember[]>(() => {
+    if (councilStaffMembers.length > 0) {
+      return councilStaffMembers;
+    }
     return users
       .filter((u) => u.role === 'teacher' || u.role === 'faculty')
-      .sort((a, b) => {
-        const aInGroup = classTeachersGroup?.emails.some((e) => e.toLowerCase().trim() === a.email.toLowerCase().trim());
-        const bInGroup = classTeachersGroup?.emails.some((e) => e.toLowerCase().trim() === b.email.toLowerCase().trim());
-        if (aInGroup && !bInGroup) return -1;
-        if (!aInGroup && bInGroup) return 1;
-        return (a.name || a.email).localeCompare(b.name || b.email);
+      .map((u) => ({
+        email: u.email.trim().toLowerCase(),
+        name: u.name || u.email,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [councilStaffMembers, users]);
+
+  // Helper to determine the effective assigned advisor email for a class
+  const getAssignedAdvisorEmail = (classItem: any): string => {
+    if (!classItem) return '';
+    if (classEdits[classItem.id]?.classTeacher !== undefined) {
+      return (classEdits[classItem.id].classTeacher || '').trim().toLowerCase();
+    }
+    const raw =
+      classItem.classTeacher ||
+      classItem.classTeacherEmail ||
+      (typeof classItem.class_teacher === 'string' ? classItem.class_teacher : classItem.class_teacher?.email) ||
+      classItem.class_teacher_email ||
+      '';
+    return typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  };
+
+  // Helper to get available advisors for a specific class context
+  // Excludes teachers assigned to any OTHER class (c.id !== targetClassId)
+  const getAdvisorOptionsForClass = (targetClassId?: number, currentAdvisorEmail?: string): CouncilMember[] => {
+    const cleanCurrent = (currentAdvisorEmail || '').trim().toLowerCase();
+
+    // Collect all advisor emails assigned to other classes
+    const otherAssignedEmails = new Set<string>();
+    for (const c of classes) {
+      if (targetClassId !== undefined && c.id === targetClassId) {
+        continue;
+      }
+      const assigned = getAssignedAdvisorEmail(c);
+      if (assigned) {
+        otherAssignedEmails.add(assigned);
+      }
+    }
+
+    // Filter candidate council staff: exclude if assigned to another class
+    const available = candidateFaculty.filter((m) => !otherAssignedEmails.has(m.email.toLowerCase()));
+
+    // If current class already has an advisor assigned, preserve it in the options
+    if (cleanCurrent && !available.some((m) => m.email.toLowerCase() === cleanCurrent)) {
+      const existingUser = users.find((u) => u.email?.toLowerCase().trim() === cleanCurrent);
+      available.unshift({
+        email: cleanCurrent,
+        name: existingUser?.name || cleanCurrent,
       });
-  }, [users, classTeachersGroup]);
+    }
+
+    return available;
+  };
 
   // Toggle accordions
   const toggleDept = (deptId: number) => {
@@ -196,11 +313,14 @@ export function DepartmentHierarchyManager() {
   };
 
   const openEditClass = (cls: any) => {
+    const currentAdv = classEdits[cls.id]?.classTeacher !== undefined
+      ? classEdits[cls.id].classTeacher
+      : (cls.classTeacher || cls.class_teacher_email || '');
     setClassForm({
       course_id: cls.course || 0,
       year_number: cls.year_number || 1,
       section: cls.section || '',
-      classTeacher: cls.classTeacher || cls.class_teacher_email || '',
+      classTeacher: currentAdv || '',
       num_students: cls.num_students || 0,
       negative_points: cls.negative_points || 0,
     });
@@ -300,11 +420,15 @@ export function DepartmentHierarchyManager() {
       if (res.success) {
         // If class advisor, students count or penalty points provided, save them
         if ((classForm.classTeacher || classForm.num_students || classForm.negative_points) && res.data?.id) {
-          await updateClass(res.data.id, {
+          const updateRes = await updateClass(res.data.id, {
             classTeacher: classForm.classTeacher,
             num_students: classForm.num_students,
             negative_points: classForm.negative_points,
           });
+          if (!updateRes.success) {
+            showStatus(updateRes.error || 'Failed to assign class advisor', 'error');
+            return;
+          }
         }
         showStatus(`Class "${generatedName}" created.`);
         setExpandedCourses((prev) => ({ ...prev, [classForm.course_id]: true }));
@@ -323,6 +447,11 @@ export function DepartmentHierarchyManager() {
       });
       if (res.success) {
         showStatus(`Class "${generatedName}" updated.`);
+        setClassEdits((prev) => {
+          const next = { ...prev };
+          delete next[classModal.cls.id];
+          return next;
+        });
         setClassModal({ isOpen: false, mode: 'edit' });
       } else {
         showStatus(res.error || 'Failed to update class', 'error');
@@ -924,34 +1053,41 @@ export function DepartmentHierarchyManager() {
                                             <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b' }}>
                                               CLASS ADVISOR (FACULTY)
                                             </label>
-                                            <select
-                                              value={currentAdvisor}
-                                              onChange={(e) =>
-                                                setClassEdits((prev) => ({
-                                                  ...prev,
-                                                  [cls.id]: { ...prev[cls.id], classTeacher: e.target.value },
-                                                }))
-                                              }
-                                              style={{
-                                                padding: '6px 8px',
-                                                fontSize: '0.8rem',
-                                                borderRadius: '6px',
-                                                border: '1px solid #cbd5e1',
-                                                background: '#fff',
-                                              }}
-                                            >
-                                              <option value="">Select Faculty Advisor</option>
-                                              {availableFaculty.map((f) => {
-                                                const isCouncil = classTeachersGroup?.emails.some(
-                                                  (e) => e.toLowerCase().trim() === f.email.toLowerCase().trim()
-                                                );
-                                                return (
-                                                  <option key={f.email} value={f.email}>
-                                                    {isCouncil ? '⭐ ' : ''}{f.name} ({f.email})
-                                                  </option>
-                                                );
-                                              })}
-                                            </select>
+                                            {(() => {
+                                              const advisorOptions = getAdvisorOptionsForClass(cls.id, currentAdvisor);
+                                              return (
+                                                <select
+                                                  value={currentAdvisor}
+                                                  onChange={(e) =>
+                                                    setClassEdits((prev) => ({
+                                                      ...prev,
+                                                      [cls.id]: { ...prev[cls.id], classTeacher: e.target.value },
+                                                    }))
+                                                  }
+                                                  style={{
+                                                    padding: '6px 8px',
+                                                    fontSize: '0.8rem',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid #cbd5e1',
+                                                    background: '#fff',
+                                                  }}
+                                                >
+                                                  <option value="">Select Faculty Advisor</option>
+                                                  {advisorOptions.map((f) => {
+                                                    const isCurrent = currentAdvisor && f.email.toLowerCase() === currentAdvisor.toLowerCase();
+                                                    return (
+                                                      <option key={f.email} value={f.email}>
+                                                        {f.name && f.name.toLowerCase() !== f.email.toLowerCase() ? `${f.name} (${f.email})` : f.email}
+                                                        {isCurrent ? ' ✓' : ''}
+                                                      </option>
+                                                    );
+                                                  })}
+                                                  {advisorOptions.length === 0 && (
+                                                    <option value="" disabled>All council staff are assigned to other classes</option>
+                                                  )}
+                                                </select>
+                                              );
+                                            })()}
                                           </div>
 
                                           {/* Students N */}
@@ -1420,23 +1556,36 @@ export function DepartmentHierarchyManager() {
                       <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>
                         Class Advisor (Faculty)
                       </label>
-                      <select
-                        className="input"
-                        value={classForm.classTeacher}
-                        onChange={(e) => setClassForm({ ...classForm, classTeacher: e.target.value })}
-                      >
-                        <option value="">Select Faculty Advisor (optional)</option>
-                        {availableFaculty.map((f) => {
-                          const isCouncil = classTeachersGroup?.emails.some(
-                            (e) => e.toLowerCase().trim() === f.email.toLowerCase().trim()
-                          );
-                          return (
-                            <option key={f.email} value={f.email}>
-                              {isCouncil ? '⭐ ' : ''}{f.name} ({f.email})
-                            </option>
-                          );
-                        })}
-                      </select>
+                      {(() => {
+                        const modalAdvisorOptions = getAdvisorOptionsForClass(
+                          classModal.mode === 'edit' ? classModal.cls?.id : undefined,
+                          classForm.classTeacher
+                        );
+                        return (
+                          <select
+                            className="input"
+                            value={classForm.classTeacher}
+                            onChange={(e) => setClassForm({ ...classForm, classTeacher: e.target.value })}
+                          >
+                            <option value="">Select Faculty Advisor (optional)</option>
+                            {modalAdvisorOptions.map((f) => {
+                              const isCurrent = classForm.classTeacher && f.email.toLowerCase() === classForm.classTeacher.toLowerCase();
+                              return (
+                                <option key={f.email} value={f.email}>
+                                  {f.name && f.name.toLowerCase() !== f.email.toLowerCase() ? `${f.name} (${f.email})` : f.email}
+                                  {isCurrent ? ' ✓' : ''}
+                                </option>
+                              );
+                            })}
+                            {modalAdvisorOptions.length === 0 && (
+                              <option value="" disabled>All council staff are assigned to other classes</option>
+                            )}
+                          </select>
+                        );
+                      })()}
+                      <p className="muted" style={{ fontSize: '0.72rem', marginTop: '4px', marginBottom: 0 }}>
+                        Only staff members in the Class Teachers Council group who are not yet assigned can be allocated.
+                      </p>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>

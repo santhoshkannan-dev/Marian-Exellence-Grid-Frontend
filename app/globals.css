@@ -534,6 +534,17 @@ h1, h2, h3, h4, p {
   box-shadow: 0 4px 15px rgba(15, 23, 42, 0.03);
 }
 
+.class-name-hover {
+  transition: color 0.15s ease;
+  cursor: pointer;
+}
+
+.class-name-hover:hover {
+  color: #2563eb !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .row-left {
   display: flex;
   align-items: center;

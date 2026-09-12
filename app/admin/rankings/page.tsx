@@ -281,14 +281,11 @@ export default function ClassRankingsPage() {
           <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#4338CA', margin: '0 0 8px 0' }}>
             Authoritative Moderation Formula
           </h3>
-          <p style={{ fontSize: '1.05rem', fontWeight: 700, color: '#3730a3', margin: '0 0 4px', fontFamily: 'monospace' }}>
-            M = max(0, (S - P) + Mod) / N
-          </p>
-          <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#4f46e5', margin: '0 0 6px', fontFamily: 'monospace' }}>
-            Mod = min(200, max(0, 2 x (N - n)))
+          <p style={{ fontSize: '1.05rem', fontWeight: 700, color: '#3730a3', margin: '0 0 6px', fontFamily: 'monospace' }}>
+            M = (S − P) / N² × (1 + 100 × (N − n))
           </p>
           <p style={{ fontSize: '0.78rem', color: '#6366f1', margin: '0 0 18px' }}>
-            S = Evaluated Marks | P = Penalties | N = Class Size | n = {smallestClassSize} (Smallest Class Benchmark) | Mod Range: 0–200 pts
+            S = Evaluated Marks | P = Penalties (defined in department management) | N = Class Size (defined in department management) | n = {smallestClassSize ?? 0} (Smallest Class Benchmark defined in department management)
           </p>
           <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div>

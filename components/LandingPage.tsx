@@ -20,36 +20,6 @@ interface StandingItem {
   P?: number;
 }
 
-const top10FallbackData: StandingItem[] = [
-  { rank: 1, className: 'II MCA', department: 'PG Department of Computer Applications', totalSubmissions: 6, totalScore: 80, percentage: 22.0, color: '#4f46e5' },
-  { rank: 2, className: 'BSc CS B', department: 'Computer Science', totalSubmissions: 15, totalScore: 1272, percentage: 14.5, color: '#059669' },
-  { rank: 3, className: 'BCom C', department: 'Commerce', totalSubmissions: 12, totalScore: 978, percentage: 11.8, color: '#d97706' },
-  { rank: 4, className: 'BSc CS A', department: 'Computer Science', totalSubmissions: 11, totalScore: 966, percentage: 11.2, color: '#ec4899' },
-  { rank: 5, className: 'BA English B', department: 'English', totalSubmissions: 10, totalScore: 930, percentage: 10.4, color: '#8b5cf6' },
-  { rank: 6, className: 'BA English A', department: 'English', totalSubmissions: 9, totalScore: 876, percentage: 9.2, color: '#06b6d4' },
-  { rank: 7, className: 'BBA B', department: 'Business Admin', totalSubmissions: 8, totalScore: 850, percentage: 8.5, color: '#f97316' },
-  { rank: 8, className: 'BSc Physics A', department: 'Physics', totalSubmissions: 7, totalScore: 754, percentage: 7.2, color: '#3b82f6' },
-  { rank: 9, className: 'BCA A', department: 'Department of Computer Applications', totalSubmissions: 7, totalScore: 750, percentage: 7.0, color: '#10b981' },
-  { rank: 10, className: 'BBA A', department: 'Business Admin', totalSubmissions: 6, totalScore: 730, percentage: 6.8, color: '#ef4444' },
-];
-
-const mockStudents = [
-  { name: 'Rahul S', className: 'I BCA A', department: 'UG Department of Computer Applications' },
-  { name: 'Sneha K', className: 'BSc CS B', department: 'Computer Science' },
-  { name: 'Arjun Prasad', className: 'BCom C', department: 'Commerce' },
-  { name: 'Maria Antony', className: 'BA English A', department: 'English' },
-  { name: 'Gautham Krishna', className: 'BBA A', department: 'Business Admin' },
-  { name: 'Anjali Ramesh', className: 'BSc Physics A', department: 'Physics' },
-];
-
-const mockDepartments = [
-  { name: 'Computer Science', score: 2988, progress: 92 },
-  { name: 'Commerce', score: 2650, progress: 84 },
-  { name: 'Management', score: 2150, progress: 76 },
-  { name: 'Languages', score: 1806, progress: 68 },
-  { name: 'Physics', score: 1680, progress: 62 },
-  { name: 'Chemistry', score: 1420, progress: 54 },
-];
 
 
 
@@ -112,6 +82,7 @@ export const LandingPage: React.FC = () => {
     students,
     users,
     criteriaCatalog,
+    departments,
   } = useApp();
 
   // Use the latest year available in championsData or fallback to '2025'
@@ -188,84 +159,100 @@ export const LandingPage: React.FC = () => {
     [submissions, activeAcademicYear, users, students]
   );
 
-  // Active Standings ordered strictly by Class Points from backend
+  // Active Standings ordered strictly by Class Submission Count (Only actual data)
   const activeStandingsData: StandingItem[] = React.useMemo(() => {
     const palette = ['#4f46e5', '#059669', '#d97706', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316', '#3b82f6', '#10b981', '#ef4444'];
 
-    // Priority 1: Official class ranking from backend classIndexData (/api/class-index/)
-    if (classIndexData && classIndexData.length > 0) {
-      // Backend already returns classes sorted by M descending with authoritative rank
-      const rankedEntries = classIndexData.filter((e) => e.rank !== null && e.rank !== undefined);
-      const sortedEntries = (rankedEntries.length > 0 ? rankedEntries : classIndexData).slice(0, 10);
+    // 1. Gather all unique classes across classes, classIndexData, and submissions
+    const classMap = new Map<string, { className: string; department: string }>();
 
-      const top10 = sortedEntries.map((entry, idx) => {
-        const { count } = getClassSubmissionsCountAndScore(entry.class_name);
-        const fallback = top10FallbackData.find((f) => f.className.toLowerCase() === entry.class_name.toLowerCase());
-        const totalSubmissions = count > 0 ? count : (fallback ? fallback.totalSubmissions : 0);
-        const officialScore = entry.M !== null && entry.M !== undefined ? entry.M : (entry.total_score || entry.S || 0);
-
-        return {
-          rank: entry.rank || idx + 1,
-          className: entry.class_name,
-          department: entry.department || 'General',
-          totalSubmissions,
-          totalScore: Math.max(0, officialScore),
-          percentage: 0,
-          color: palette[idx % palette.length],
-          M: entry.M,
-          S: entry.S,
-          P: entry.P,
-        };
-      });
-
-      const grandTotal = top10.reduce((sum, item) => sum + item.totalScore, 0) || 1;
-      return top10.map((item) => ({
-        ...item,
-        percentage: Number(((item.totalScore / grandTotal) * 100).toFixed(1)),
-      }));
-    }
-
-    // Priority 2: Compute standings from classes & submissions
     if (classes && classes.length > 0) {
-      const computed = classes.map((c, idx) => {
-        const { count, score } = getClassSubmissionsCountAndScore(c.name);
-        const fallback = top10FallbackData.find((f) => f.className.toLowerCase() === c.name.toLowerCase());
-        const totalSubmissions = count > 0 ? count : (fallback ? fallback.totalSubmissions : 0);
-        const totalScore = score > 0 ? score : (fallback ? fallback.totalScore : 0);
-
-        return {
-          rank: idx + 1,
-          className: c.name,
-          department: c.department || 'General',
-          totalSubmissions,
-          totalScore,
-          percentage: 0,
-          color: palette[idx % palette.length],
-        };
+      classes.forEach((c) => {
+        if (c.name) {
+          const key = c.name.trim().toLowerCase();
+          classMap.set(key, {
+            className: c.name.trim(),
+            department: c.department || 'General',
+          });
+        }
       });
-
-      computed.sort((a, b) => {
-        if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-        return b.totalSubmissions - a.totalSubmissions;
-      });
-
-      const top10 = computed.slice(0, 10).map((item, idx) => ({
-        ...item,
-        rank: idx + 1,
-        color: palette[idx % palette.length],
-      }));
-
-      const grandTotal = top10.reduce((sum, item) => sum + item.totalScore, 0) || 1;
-      return top10.map((item) => ({
-        ...item,
-        percentage: Number(((item.totalScore / grandTotal) * 100).toFixed(1)),
-      }));
     }
 
-    // Priority 3: Curated Top 10 fallback data sorted by points
-    const sortedFallback = [...top10FallbackData].sort((a, b) => b.totalScore - a.totalScore);
-    return sortedFallback.map((f, idx) => ({ ...f, rank: idx + 1, color: palette[idx % palette.length] }));
-  }, [classIndexData, classes, getClassSubmissionsCountAndScore]);
+    if (classIndexData && classIndexData.length > 0) {
+      classIndexData.forEach((e) => {
+        if (e.class_name) {
+          const key = e.class_name.trim().toLowerCase();
+          if (!classMap.has(key)) {
+            classMap.set(key, {
+              className: e.class_name.trim(),
+              department: e.department || 'General',
+            });
+          }
+        }
+      });
+    }
+
+    if (submissions && submissions.length > 0) {
+      submissions.forEach((s) => {
+        const cName = (s.className || (s as any).class_name || '').trim();
+        if (cName) {
+          const key = cName.toLowerCase();
+          if (!classMap.has(key)) {
+            classMap.set(key, {
+              className: cName,
+              department: s.department || (s as any).department_name || 'General',
+            });
+          }
+        }
+      });
+    }
+
+    const allItems = Array.from(classMap.values()).map((c) => {
+      const { count, score } = getClassSubmissionsCountAndScore(c.className);
+      const indexEntry = (classIndexData || []).find(
+        (ci) => ci.class_name?.trim().toLowerCase() === c.className.toLowerCase()
+      );
+      const totalSubmissions = Math.max(count, indexEntry?.total_submissions || 0);
+      const totalScore = Math.max(score, indexEntry?.total_score || 0);
+
+      return {
+        className: c.className,
+        department: indexEntry?.department || c.department,
+        totalSubmissions,
+        totalScore,
+        M: indexEntry?.M,
+        S: indexEntry?.S,
+        P: indexEntry?.P,
+      };
+    });
+
+    // Strictly show classes with actual submissions
+    const actualItems = allItems.filter((c) => c.totalSubmissions > 0);
+
+    // Sort strictly by submission count descending
+    actualItems.sort((a, b) => {
+      if (b.totalSubmissions !== a.totalSubmissions) {
+        return b.totalSubmissions - a.totalSubmissions;
+      }
+      if (b.totalScore !== a.totalScore) {
+        return b.totalScore - a.totalScore;
+      }
+      return a.className.localeCompare(b.className);
+    });
+
+    const top10 = actualItems.slice(0, 10).map((item, idx) => ({
+      ...item,
+      rank: idx + 1,
+      color: palette[idx % palette.length],
+      percentage: 0,
+    }));
+
+    const grandTotal = top10.reduce((sum, item) => sum + item.totalSubmissions, 0) || 1;
+    return top10.map((item) => ({
+      ...item,
+      percentage: Number(((item.totalSubmissions / grandTotal) * 100).toFixed(1)),
+    }));
+  }, [classes, classIndexData, submissions, getClassSubmissionsCountAndScore]);
 
   // Helper to extract criteria category & title
   const getCriteriaDetails = React.useCallback(
@@ -348,7 +335,7 @@ export const LandingPage: React.FC = () => {
 
       for (const s of classSubs) {
         const details = getCriteriaDetails(s.criteriaId);
-        const catName = details.category;
+        const catName = (s as any).category_name || (s as any).category || details.category || 'General Activities';
         const current = catMap.get(catName) || { category: catName, count: 0, points: 0, activities: [] };
         current.count += 1;
         const isApproved = ['Approved', 'Verified', 'Student Rep Verified', 'Evaluated', 'Locked'].includes(s.status);
@@ -364,42 +351,33 @@ export const LandingPage: React.FC = () => {
         catMap.set(catName, current);
       }
 
-      return Array.from(catMap.values()).sort((a, b) => b.points - a.points || b.count - a.count);
+      // Sort categories strictly by submission count descending
+      return Array.from(catMap.values()).sort((a, b) => b.count - a.count || b.points - a.points);
     }
 
-    // Fallback categories for classes when no submissions are in DB
-    const totalScore = selectedClass.totalScore || 0;
-    const totalSubs = selectedClass.totalSubmissions || 0;
+    // When client-side submissions array is empty (e.g. public visitor), pull actual categories from classIndexData
+    const indexEntry = (classIndexData || []).find(
+      (ci) => ci.class_name?.trim().toLowerCase() === normTarget
+    );
 
-    const fallbackList: ClassCategoryGroup[] = [
-      {
-        category: 'Academics & Semester Grades',
-        count: Math.max(1, Math.round(totalSubs * 0.4)),
-        points: Math.round(totalScore * 0.45 * 10) / 10,
-        activities: [{ title: 'Semester Result & Academic Performance', marks: Math.round(totalScore * 0.45 * 10) / 10, status: 'Evaluated' }]
-      },
-      {
-        category: 'Research & Publications',
-        count: Math.max(1, Math.round(totalSubs * 0.25)),
-        points: Math.round(totalScore * 0.3 * 10) / 10,
-        activities: [{ title: 'Research Publications & Papers', marks: Math.round(totalScore * 0.3 * 10) / 10, status: 'Evaluated' }]
-      },
-      {
-        category: 'Certifications & Online Courses',
-        count: Math.max(1, Math.round(totalSubs * 0.2)),
-        points: Math.round(totalScore * 0.15 * 10) / 10,
-        activities: [{ title: 'NPTEL & MOOC Certifications', marks: Math.round(totalScore * 0.15 * 10) / 10, status: 'Evaluated' }]
-      },
-      {
-        category: 'Outreach, Extension & Co-Curricular',
-        count: Math.max(1, Math.round(totalSubs * 0.15)),
-        points: Math.round(totalScore * 0.1 * 10) / 10,
-        activities: [{ title: 'Community Outreach & Extension Programs', marks: Math.round(totalScore * 0.1 * 10) / 10, status: 'Evaluated' }]
-      },
-    ];
+    if (indexEntry && indexEntry.submitted_categories && indexEntry.submitted_categories.length > 0) {
+      return indexEntry.submitted_categories.map((c) => ({
+        category: c.category,
+        count: c.count,
+        points: c.points || 0,
+        activities: [
+          {
+            title: `${c.category} Submissions`,
+            marks: c.points || 0,
+            status: 'Verified',
+          },
+        ],
+      })).sort((a, b) => b.count - a.count || b.points - a.points);
+    }
 
-    return fallbackList.filter(c => c.count > 0 || c.points > 0);
-  }, [selectedClass, submissions, activeAcademicYear, users, students, getCriteriaDetails]);
+    // Strictly actual data only: no mock fallbacks
+    return [];
+  }, [selectedClass, submissions, classIndexData, activeAcademicYear, users, students, getCriteriaDetails]);
 
   useEffect(() => {
     if (availableYears.length > 0 && !availableYears.includes(activeYear)) {
@@ -548,16 +526,20 @@ export const LandingPage: React.FC = () => {
     });
 
     // Filter Departments
-    mockDepartments.forEach(d => {
-      if (d.name.toLowerCase().includes(query.toLowerCase())) {
-        filtered.push({ type: 'Department', title: d.name, subtitle: `Ranking List • ${d.score} pts`, refItem: d });
+    (departments || []).forEach(d => {
+      const dName = typeof d === 'string' ? d : (d.name || '');
+      if (dName && dName.toLowerCase().includes(query.toLowerCase())) {
+        filtered.push({ type: 'Department', title: dName, subtitle: `Department`, refItem: d });
       }
     });
 
     // Filter Students
-    mockStudents.forEach(s => {
-      if (s.name.toLowerCase().includes(query.toLowerCase()) || s.className.toLowerCase().includes(query.toLowerCase())) {
-        filtered.push({ type: 'Student', title: s.name, subtitle: `${s.className} (${s.department})`, refItem: s });
+    (students || users || []).forEach(s => {
+      const sName = s.name || s.fullName || '';
+      const cName = s.className || (s as any).class_name || '';
+      const dName = s.department || '';
+      if (sName && (sName.toLowerCase().includes(query.toLowerCase()) || cName.toLowerCase().includes(query.toLowerCase()))) {
+        filtered.push({ type: 'Student', title: sName, subtitle: `${cName}${dName ? ` (${dName})` : ''}`, refItem: s });
       }
     });
 
@@ -768,16 +750,21 @@ export const LandingPage: React.FC = () => {
                   })}
 
                   {/* Concentric Semi-Circle Arcs */}
-                  {activeStandingsData.map((item, idx) => {
+                  {activeStandingsData.length === 0 ? (
+                    <text x={cx} y={cy - 40} textAnchor="middle" fill="#94a3b8" fontSize="13" fontWeight="600">
+                      No Class Submissions Recorded
+                    </text>
+                  ) : (
+                    activeStandingsData.map((item, idx) => {
                     const r = maxRadius - idx * radiusStep;
                     const dPath = `M ${cx + r} ${cy} A ${r} ${r} 0 0 0 ${cx - r} ${cy}`;
                     const pathLen = Math.PI * r;
 
                     const totalRanked = activeStandingsData.length || 1;
                     const rankProgress = totalRanked === 1 ? 0.85 : Math.max(0.20, 0.88 - ((item.rank - 1) * (0.64 / Math.max(1, totalRanked - 1))));
-                    const scoreRatio = topScore > 0 && item.totalScore > 0 ? (item.totalScore / topScore) : 0;
-                    const progress = item.totalScore > 0
-                      ? Math.max(0.06, Math.min(0.95, scoreRatio * 0.92))
+                    const subRatio = maxSubmissions > 0 && item.totalSubmissions > 0 ? (item.totalSubmissions / maxSubmissions) : 0;
+                    const progress = item.totalSubmissions > 0
+                      ? Math.max(0.06, Math.min(0.95, subRatio * 0.92))
                       : rankProgress;
 
                     // Loading Animation Dash Offset logic
@@ -808,21 +795,23 @@ export const LandingPage: React.FC = () => {
                           onMouseEnter={() => setHoveredIndex(idx)}
                           onMouseLeave={() => setHoveredIndex(null)}
                           onClick={() => setSelectedClass(item)}
-                        />
-                        {/* Score Label at tip of arc */}
+                        >
+                          <title>{`${item.className}: ${item.totalSubmissions} submissions (Rank #${item.rank})`}</title>
+                        </path>
+                        {/* Submission Count Label at tip of arc */}
                         <text
                           x={labelX}
                           y={labelY}
                           className={`arc-tip-label ${isHighlighted ? 'highlighted' : ''}`}
                           textAnchor="middle"
                         >
-                          {item.totalScore > 0
-                            ? (Number.isInteger(item.totalScore) ? item.totalScore.toLocaleString() : item.totalScore.toFixed(1))
+                          {item.totalSubmissions > 0
+                            ? `${item.totalSubmissions}`
                             : `#${item.rank}`}
                         </text>
                       </g>
                     );
-                  })}
+                  }))}
                 </svg>
               </div>
             </div>
@@ -869,7 +858,7 @@ export const LandingPage: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Summary Metric Cards: Class Submissions & Class Points */}
+                  {/* Summary Metric Cards: Class Submissions & Active Categories */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Class Submissions</div>
@@ -878,14 +867,14 @@ export const LandingPage: React.FC = () => {
                       </div>
                     </div>
                     <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Class Points</div>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Categories</div>
                       <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#059669', marginTop: '2px' }}>
-                        {Number.isInteger(selectedClass.totalScore) ? selectedClass.totalScore : selectedClass.totalScore.toFixed(1)} pts
+                        {selectedClassCategories.length}
                       </div>
                     </div>
                   </div>
 
-                  {/* Submitted Categories Section */}
+                  {/* Submitted Categories Header */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
                     <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span>📂 Submitted Categories</span>
@@ -909,112 +898,122 @@ export const LandingPage: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* List of All Submission Categories of this Class */}
+                  {/* List of All Submission Categories of this Class with Submission Count in each */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '310px', overflowY: 'auto', paddingRight: '4px' }}>
-                    {selectedClassCategories.map((cat, cIdx) => {
-                      const maxPts = Math.max(...selectedClassCategories.map((c) => c.points), 1);
-                      const widthPct = Math.min(100, Math.max(8, (cat.points / maxPts) * 100));
+                    {selectedClassCategories.length === 0 ? (
+                      <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.86rem' }}>
+                        No submissions recorded yet for this class.
+                      </div>
+                    ) : (
+                      selectedClassCategories.map((cat, cIdx) => {
+                        const maxSubsInCat = Math.max(...selectedClassCategories.map((c) => c.count), 1);
+                        const widthPct = Math.min(100, Math.max(10, (cat.count / maxSubsInCat) * 100));
+                        const pctOfTotal = selectedClass.totalSubmissions > 0
+                          ? Math.round((cat.count / selectedClass.totalSubmissions) * 100)
+                          : 0;
 
-                      const icon = cat.category.toLowerCase().includes('research') || cat.category.toLowerCase().includes('publication')
-                        ? '🔬'
-                        : cat.category.toLowerCase().includes('course') || cat.category.toLowerCase().includes('mooc') || cat.category.toLowerCase().includes('cert')
-                          ? '📜'
-                          : cat.category.toLowerCase().includes('outreach') || cat.category.toLowerCase().includes('extension')
-                            ? '🤝'
-                            : cat.category.toLowerCase().includes('prize') || cat.category.toLowerCase().includes('competi') || cat.category.toLowerCase().includes('hackathon')
-                              ? '🏆'
-                              : '📚';
+                        const icon = cat.category.toLowerCase().includes('research') || cat.category.toLowerCase().includes('publication')
+                          ? '🔬'
+                          : cat.category.toLowerCase().includes('course') || cat.category.toLowerCase().includes('mooc') || cat.category.toLowerCase().includes('cert')
+                            ? '📜'
+                            : cat.category.toLowerCase().includes('outreach') || cat.category.toLowerCase().includes('extension')
+                              ? '🤝'
+                              : cat.category.toLowerCase().includes('prize') || cat.category.toLowerCase().includes('competi') || cat.category.toLowerCase().includes('hackathon')
+                                ? '🏆'
+                                : '📚';
 
-                      return (
-                        <div
-                          key={cIdx}
-                          style={{
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '12px',
-                            padding: '12px 14px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '8px',
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '1.05rem' }}>{icon}</span>
-                              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>
-                                {cat.category}
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{
-                                fontSize: '0.74rem',
-                                fontWeight: 700,
-                                color: '#1d4ed8',
-                                background: '#eff6ff',
-                                padding: '2px 8px',
-                                borderRadius: '10px',
-                                border: '1px solid #dbeafe',
-                                whiteSpace: 'nowrap',
-                              }}>
-                                {cat.count} {cat.count === 1 ? 'sub' : 'subs'}
-                              </span>
-                              <span style={{
-                                fontSize: '0.82rem',
-                                fontWeight: 800,
-                                color: '#059669',
-                                minWidth: '55px',
-                                textAlign: 'right',
-                              }}>
-                                {cat.points > 0 ? `${cat.points} pts` : 'Pending'}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Points Progress Bar */}
-                          <div style={{ height: '5px', width: '100%', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${widthPct}%`, background: 'linear-gradient(90deg, #1d4ed8, #60a5fa)', borderRadius: '3px' }}></div>
-                          </div>
-
-                          {/* Activity Badges */}
-                          {cat.activities && cat.activities.length > 0 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
-                              {cat.activities.slice(0, 3).map((act, aIdx) => (
-                                <span
-                                  key={aIdx}
-                                  style={{
-                                    fontSize: '0.72rem',
-                                    color: '#475569',
-                                    background: '#f8fafc',
-                                    padding: '2px 6px',
-                                    borderRadius: '6px',
-                                    border: '1px solid #edf2f7',
-                                  }}
-                                >
-                                  {act.subcategory || act.title} {act.marks > 0 ? `(+${act.marks})` : ''}
+                        return (
+                          <div
+                            key={cIdx}
+                            style={{
+                              background: '#ffffff',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '12px',
+                              padding: '12px 14px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '1.05rem' }}>{icon}</span>
+                                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>
+                                  {cat.category}
                                 </span>
-                              ))}
-                              {cat.activities.length > 3 && (
-                                <span style={{ fontSize: '0.7rem', color: '#94a3b8', padding: '2px 4px' }}>
-                                  +{cat.activities.length - 3} more
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{
+                                  fontSize: '0.78rem',
+                                  fontWeight: 800,
+                                  color: '#1d4ed8',
+                                  background: '#eff6ff',
+                                  padding: '3px 10px',
+                                  borderRadius: '10px',
+                                  border: '1px solid #dbeafe',
+                                  whiteSpace: 'nowrap',
+                                }}>
+                                  {cat.count} {cat.count === 1 ? 'submission' : 'submissions'}
                                 </span>
-                              )}
+                                <span style={{
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
+                                  color: '#64748b',
+                                  minWidth: '36px',
+                                  textAlign: 'right',
+                                }}>
+                                  {pctOfTotal}%
+                                </span>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
+
+                            {/* Submission Count Progress Bar */}
+                            <div style={{ height: '5px', width: '100%', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${widthPct}%`, background: 'linear-gradient(90deg, #3b82f6, #6366f1)', borderRadius: '3px' }}></div>
+                            </div>
+
+                            {/* Activity Badges */}
+                            {cat.activities && cat.activities.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                                {cat.activities.slice(0, 3).map((act, aIdx) => (
+                                  <span
+                                    key={aIdx}
+                                    style={{
+                                      fontSize: '0.72rem',
+                                      color: '#475569',
+                                      background: '#f8fafc',
+                                      padding: '2px 6px',
+                                      borderRadius: '6px',
+                                      border: '1px solid #edf2f7',
+                                    }}
+                                  >
+                                    {act.subcategory || act.title}
+                                  </span>
+                                ))}
+                                {cat.activities.length > 3 && (
+                                  <span style={{ fontSize: '0.7rem', color: '#94a3b8', padding: '2px 4px' }}>
+                                    +{cat.activities.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               ) : (
                 <div>
                   <div className="leaderboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <h2 className="chart-title" style={{ margin: 0 }}>{`Top ${activeStandingsData.length} Standings`}</h2>
+                    <h2 className="chart-title" style={{ margin: 0 }}>Top 10 Standings</h2>
+                    <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>By Submission Count</span>
                   </div>
 
-                  {/* 4 Clean Columns: Rank | Class | Class Submissions | Class Points */}
+                  {/* 3 Columns in same line: Rank | Class | Class Submissions */}
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '55px 1fr 140px 100px',
+                    gridTemplateColumns: '60px 1fr 150px',
                     alignItems: 'center',
                     padding: '8px 12px',
                     fontSize: '0.74rem',
@@ -1027,12 +1026,18 @@ export const LandingPage: React.FC = () => {
                   }}>
                     <span>Rank</span>
                     <span>Class</span>
-                    <span style={{ textAlign: 'center' }}>Class Submissions</span>
-                    <span style={{ textAlign: 'right' }}>Class Points</span>
+                    <span style={{ textAlign: 'right' }}>Class Submissions</span>
                   </div>
 
                   <div className="leaderboard-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {activeStandingsData.map((item, idx) => {
+                    {activeStandingsData.length === 0 ? (
+                      <div style={{ padding: '36px 16px', textAlign: 'center', color: '#64748b' }}>
+                        <div style={{ fontSize: '2rem', marginBottom: '8px' }}>📊</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>No class submissions recorded yet</div>
+                        <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>Actual class submissions and rankings will appear here once submitted.</div>
+                      </div>
+                    ) : (
+                      activeStandingsData.map((item, idx) => {
                       const isDimmed = hoveredIndex !== null && hoveredIndex !== idx;
                       const isHighlighted = hoveredIndex === idx;
                       const rankDisplay = item.rank === 1 ? '🥇 #1' : item.rank === 2 ? '🥈 #2' : item.rank === 3 ? '🥉 #3' : `#${item.rank}`;
@@ -1043,7 +1048,7 @@ export const LandingPage: React.FC = () => {
                           className={`leaderboard-row ${isHighlighted ? 'highlighted' : ''}`}
                           style={{
                             display: 'grid',
-                            gridTemplateColumns: '55px 1fr 140px 100px',
+                            gridTemplateColumns: '60px 1fr 150px',
                             alignItems: 'center',
                             padding: '10px 12px',
                             borderRadius: '10px',
@@ -1056,6 +1061,7 @@ export const LandingPage: React.FC = () => {
                           onMouseEnter={() => setHoveredIndex(idx)}
                           onMouseLeave={() => setHoveredIndex(null)}
                           onClick={() => setSelectedClass(item)}
+                          title={`Click to view ${item.className} submitted categories`}
                         >
                           {/* 1. Rank */}
                           <span style={{
@@ -1066,20 +1072,32 @@ export const LandingPage: React.FC = () => {
                             {rankDisplay}
                           </span>
 
-                          {/* 2. Class */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {/* 2. Class (Clickable name) */}
+                          <div
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedClass(item);
+                            }}
+                          >
                             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color, flexShrink: 0, display: 'inline-block' }}></span>
-                            <span style={{
-                              fontSize: '0.94rem',
-                              fontWeight: 700,
-                              color: '#0f172a',
-                            }}>
+                            <span
+                              style={{
+                                fontSize: '0.94rem',
+                                fontWeight: 700,
+                                color: '#0f172a',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                              className="class-name-hover"
+                            >
                               {item.className}
                             </span>
                           </div>
 
-                          {/* 3. Class Submissions */}
-                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                          {/* 3. Class Submissions (Same line) */}
+                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                             <span style={{
                               fontSize: '0.78rem',
                               fontWeight: 700,
@@ -1089,26 +1107,20 @@ export const LandingPage: React.FC = () => {
                               borderRadius: '12px',
                               border: '1px solid #bfdbfe',
                               whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
                             }}>
+                              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                              </svg>
                               {item.totalSubmissions} {item.totalSubmissions === 1 ? 'sub' : 'subs'}
                             </span>
                           </div>
-
-                          {/* 4. Class Points */}
-                          <span style={{
-                            fontSize: '0.92rem',
-                            fontWeight: 800,
-                            color: '#0f172a',
-                            textAlign: 'right',
-                          }}>
-                            {(() => {
-                              const s = Math.max(0, item.totalScore);
-                              return Number.isInteger(s) ? s : s.toFixed(1);
-                            })()} pts
-                          </span>
                         </div>
                       );
-                    })}
+                    }))}
                   </div>
                 </div>
               )}

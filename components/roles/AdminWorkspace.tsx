@@ -75,6 +75,174 @@ const createDefaultItemDraft = (id = '1'): CategoryItemDraft => ({
   },
 });
 
+export const MASTER_CATEGORY_META: Record<string, {
+  icon: string;
+  accessLabel: string;
+  accessType: 'dqc' | 'all' | 'hybrid';
+  markingMode: 'Auto-marked' | 'Evaluator Manual Marking';
+  cycleLimit?: string;
+  accent: string;
+  accentBg: string;
+  accentBorder: string;
+  formula?: string;
+  specialNote?: string;
+}> = {
+  'cat-academics': {
+    icon: '🎓',
+    accessLabel: 'DQC Members Only',
+    accessType: 'dqc',
+    markingMode: 'Auto-marked',
+    cycleLimit: 'Max 1 / cycle',
+    accent: '#7c3aed',
+    accentBg: '#f5f3ff',
+    accentBorder: '#ddd6fe',
+    formula: 'Marks = (N≥90% × 5) + (N80-90% × 4) + (N70-80% × 3) + PassBonus - NFail',
+    specialNote: 'PassBonus: 100-90.01% → 5 | 90-80.01% → 4 | 80-70.01% → 3 | 70-60.01% → 2 | 60-50.01% → 1 | <50% → 0',
+  },
+  'cat-courses': {
+    icon: '💻',
+    accessLabel: 'All Students',
+    accessType: 'all',
+    markingMode: 'Auto-marked',
+    cycleLimit: 'Max 3 / cycle each (Swayam: 5m, MOOC: 2m)',
+    accent: '#2563eb',
+    accentBg: '#eff6ff',
+    accentBorder: '#bfdbfe',
+  },
+  'cat-competitive-exams': {
+    icon: '📝',
+    accessLabel: 'All Students',
+    accessType: 'all',
+    markingMode: 'Auto-marked',
+    cycleLimit: 'JRF: 20m (Max 1) | NET: 10m (Max 1) | Any other: 3m | UPSC/PSC: 1m (Max 3)',
+    accent: '#0284c7',
+    accentBg: '#f0f9ff',
+    accentBorder: '#bae6fd',
+  },
+  'cat-internships': {
+    icon: '💼',
+    accessLabel: 'All Students',
+    accessType: 'all',
+    markingMode: 'Auto-marked',
+    cycleLimit: 'Offline: 5m | Online: 3m (Valid June 01 – March 30)',
+    accent: '#0d9488',
+    accentBg: '#f0fdfa',
+    accentBorder: '#99f6e4',
+  },
+  'cat-scholarships': {
+    icon: '🏆',
+    accessLabel: 'All Students',
+    accessType: 'all',
+    markingMode: 'Auto-marked',
+    cycleLimit: 'Int: 20m | Nat: 10m | State: 5m | Dist: 2m',
+    accent: '#d97706',
+    accentBg: '#fffbeb',
+    accentBorder: '#fde68a',
+  },
+  'cat-research': {
+    icon: '🔬',
+    accessLabel: 'All Students',
+    accessType: 'all',
+    markingMode: 'Auto-marked',
+    cycleLimit: 'Scopus: 10m | Conf: 5m | Patents: 10m/5m | Books: 10m/5m/2m | Funded: 20m/10m/5m/3m',
+    accent: '#0891b2',
+    accentBg: '#ecfeff',
+    accentBorder: '#a5f3fc',
+  },
+  'cat-startups': {
+    icon: '🚀',
+    accessLabel: 'All Students',
+    accessType: 'all',
+    markingMode: 'Auto-marked',
+    cycleLimit: 'Govt-registered: 10 marks',
+    accent: '#db2777',
+    accentBg: '#fdf2f8',
+    accentBorder: '#fbcfe8',
+  },
+  'cat-prizes': {
+    icon: '🥇',
+    accessLabel: 'Hybrid Access (Ind: All, Group: DQC)',
+    accessType: 'hybrid',
+    markingMode: 'Auto-marked',
+    cycleLimit: 'Marian: 10/5/3 | Outside: 15/10/5 | Participation: 3/2',
+    accent: '#ca8a04',
+    accentBg: '#fefce8',
+    accentBorder: '#fef08a',
+    specialNote: 'Individual prizes are open to all students. Group prizes are restricted to DQC members.',
+  },
+  'cat-programs-organized': {
+    icon: '📅',
+    accessLabel: 'DQC Members Only',
+    accessType: 'dqc',
+    markingMode: 'Auto-marked',
+    cycleLimit: 'Max 1 / cycle (Inter: 5m, Intra: 3m, Magazine: 5m)',
+    accent: '#9333ea',
+    accentBg: '#faf5ff',
+    accentBorder: '#e9d5ff',
+  },
+  'cat-leaderships': {
+    icon: '👥',
+    accessLabel: 'DQC Members Only',
+    accessType: 'dqc',
+    markingMode: 'Auto-marked',
+    cycleLimit: '5 marks each (MCSC, SAHYA, Clubs, Innovative)',
+    accent: '#4f46e5',
+    accentBg: '#eef2ff',
+    accentBorder: '#c7d2fe',
+  },
+  'cat-social-responsibilities': {
+    icon: '🤝',
+    accessLabel: 'DQC Members Only',
+    accessType: 'dqc',
+    markingMode: 'Auto-marked',
+    cycleLimit: 'Coordination: 5m | Participation: 3m | News media: 3m',
+    accent: '#059669',
+    accentBg: '#ecfdf5',
+    accentBorder: '#a7f3d0',
+  },
+  'cat-career-advancement': {
+    icon: '📈',
+    accessLabel: 'Hybrid Access (Library/Repo: DQC, LinkedIn: All)',
+    accessType: 'hybrid',
+    markingMode: 'Evaluator Manual Marking',
+    cycleLimit: 'Evaluator Scored (Default 0 marks)',
+    accent: '#ea580c',
+    accentBg: '#fff7ed',
+    accentBorder: '#fed7aa',
+    specialNote: 'Library Footfall, Library Books, and Repository Creation are DQC-only. LinkedIn Profile Completion is open to all students.',
+  },
+};
+
+export const getCategoryMetadata = (cat: any) => {
+  const code = (cat.code || cat.id || '').toString().toLowerCase();
+  const name = (cat.category || cat.title || '').toString().toLowerCase();
+
+  for (const [key, meta] of Object.entries(MASTER_CATEGORY_META)) {
+    if (code === key.toLowerCase() || code.includes(key.replace('cat-', ''))) return meta;
+    if (name.includes('academic') && key === 'cat-academics') return meta;
+    if (name.includes('online course') && key === 'cat-courses') return meta;
+    if (name.includes('competitive') && key === 'cat-competitive-exams') return meta;
+    if (name.includes('internship') && key === 'cat-internships') return meta;
+    if (name.includes('scholarship') && key === 'cat-scholarships') return meta;
+    if (name.includes('research') && key === 'cat-research') return meta;
+    if (name.includes('startup') && key === 'cat-startups') return meta;
+    if (name.includes('prize') && key === 'cat-prizes') return meta;
+    if (name.includes('program') && key === 'cat-programs-organized') return meta;
+    if (name.includes('leadership') && key === 'cat-leaderships') return meta;
+    if (name.includes('social') && key === 'cat-social-responsibilities') return meta;
+    if (name.includes('career') && key === 'cat-career-advancement') return meta;
+  }
+  return {
+    icon: '⚡',
+    accessLabel: cat.access_level === 'student_rep_only' ? 'DQC Members Only' : 'All Students',
+    accessType: (cat.access_level === 'student_rep_only' ? 'dqc' : 'all') as 'dqc' | 'all' | 'hybrid',
+    markingMode: (cat.is_manual_eval ? 'Evaluator Manual Marking' : 'Auto-marked') as 'Auto-marked' | 'Evaluator Manual Marking',
+    accent: '#475569',
+    accentBg: '#f8fafc',
+    accentBorder: '#cbd5e1',
+  };
+};
+
 export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({ view }) => {
   const { activePage } = useApp();
   const activeTab = view || activePage || 'years';
@@ -724,371 +892,558 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({ view }) => {
         {/* ---------------------------------------------------- */}
         {activeTab === 'criteria' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {selectedCategory ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                {/* Back & Add Item Row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <button
-                    className="btn"
-                    style={{
-                      background: '#ffffff',
-                      color: '#ea580c',
-                      border: '1.5px solid #ea580c',
-                      fontWeight: 700,
-                      padding: '8px 20px',
-                      borderRadius: '10px',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => {
-                      setSelectedCategory(null);
-                      setShowAddItemForm(false);
-                    }}
-                  >
-                    ← Back to Modules
-                  </button>
+            {selectedCategory ? (() => {
+              const catMeta = getCategoryMetadata(selectedCategory);
+              const catTitle = selectedCategory.category || selectedCategory.title || 'Category Detail';
+              const items = (criteriaCatalog.find(c => String(c.id) === String(selectedCategory.id))?.items) || selectedCategory.items || [];
+              const isAcademics = (selectedCategory.code || selectedCategory.id || '').toString().toLowerCase().includes('academic') || catTitle.toLowerCase().includes('academic');
 
-                  <button
-                    className="btn"
-                    style={{
-                      background: '#ea580c',
-                      color: '#ffffff',
-                      fontWeight: 700,
-                      padding: '10px 22px',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      border: 'none'
-                    }}
-                    onClick={() => setShowAddItemForm(!showAddItemForm)}
-                  >
-                    + Add Item
-                  </button>
-                </div>
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {/* Back & Add Item Row */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <button
+                      className="btn"
+                      style={{
+                        background: '#ffffff',
+                        color: '#ea580c',
+                        border: '1.5px solid #ea580c',
+                        fontWeight: 700,
+                        padding: '8px 20px',
+                        borderRadius: '10px',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => {
+                        setSelectedCategory(null);
+                        setShowAddItemForm(false);
+                      }}
+                    >
+                      ← Back to Categories
+                    </button>
 
-                <div>
-                  <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 6px 0' }}>{selectedCategory.title}</h1>
-                  <p className="muted" style={{ fontSize: '0.88rem', margin: 0 }}>Detailed view of evaluation items for this module.</p>
-                </div>
+                    <button
+                      className="btn"
+                      style={{
+                        background: '#ea580c',
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        padding: '10px 22px',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        border: 'none'
+                      }}
+                      onClick={() => setShowAddItemForm(!showAddItemForm)}
+                    >
+                      + Add Item
+                    </button>
+                  </div>
 
-                {/* Add Item form */}
-                {showAddItemForm && (
-                  <div className="card" style={{ border: '1.5px solid var(--primary)', background: '#ffffff', borderRadius: '16px', padding: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
-                        Add Criteria Item to {selectedCategory.category}
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddItemForm(false)}
-                        style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontWeight: 700 }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    <form onSubmit={handleCreateCriteriaItem} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 800, fontSize: '0.84rem' }}>
-                          ITEM TITLE <span style={{ color: '#ef4444' }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="input"
-                          placeholder="e.g. From Marian College, Paper Presentation, Workshop..."
-                          value={newItemTitle}
-                          onChange={(e) => setNewItemTitle(e.target.value)}
-                          required
-                        />
+                  {/* Category Header Card */}
+                  <div className="card" style={{
+                    background: '#ffffff',
+                    border: `1.5px solid ${catMeta.accentBorder}`,
+                    borderRadius: '16px',
+                    padding: '24px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.04)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div style={{
+                          width: '54px',
+                          height: '54px',
+                          borderRadius: '14px',
+                          background: catMeta.accentBg,
+                          border: `1px solid ${catMeta.accentBorder}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '1.8rem'
+                        }}>
+                          {catMeta.icon}
+                        </div>
+                        <div>
+                          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 4px 0' }}>
+                            {catTitle}
+                          </h1>
+                          <p className="muted" style={{ fontSize: '0.88rem', margin: 0 }}>
+                            {selectedCategory.desc || selectedCategory.details || 'Detailed evaluation specifications and subcategory criteria.'}
+                          </p>
+                        </div>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        <div className="form-group">
-                          <label className="form-label" style={{ fontWeight: 800, fontSize: '0.84rem' }}>TYPE</label>
-                          <select
-                            className="select"
-                            value={newItemType}
-                            onChange={(e) => setNewItemType(e.target.value)}
-                          >
-                            <option value="Count Based">Count Based</option>
-                            <option value="Fixed">Fixed</option>
-                            <option value="Range Based">Range Based</option>
-                            <option value="Negative Marks">Negative Marks</option>
-                          </select>
-                        </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                        {/* Access Level Badge */}
+                        <span style={{
+                          background: catMeta.accessType === 'dqc' ? '#f3e8ff' : catMeta.accessType === 'hybrid' ? '#fef3c7' : '#e0f2fe',
+                          color: catMeta.accessType === 'dqc' ? '#6b21a8' : catMeta.accessType === 'hybrid' ? '#92400e' : '#0369a1',
+                          border: `1px solid ${catMeta.accessType === 'dqc' ? '#d8b4fe' : catMeta.accessType === 'hybrid' ? '#fde68a' : '#7dd3fc'}`,
+                          padding: '6px 12px',
+                          borderRadius: '9999px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}>
+                          {catMeta.accessType === 'dqc' ? '🔒' : catMeta.accessType === 'hybrid' ? '⚖️' : '🌐'} {catMeta.accessLabel}
+                        </span>
 
+                        {/* Marking Mode Badge */}
+                        <span style={{
+                          background: catMeta.markingMode === 'Auto-marked' ? '#dcfce7' : '#ffedd5',
+                          color: catMeta.markingMode === 'Auto-marked' ? '#166534' : '#9a3412',
+                          border: `1px solid ${catMeta.markingMode === 'Auto-marked' ? '#86efac' : '#fdba74'}`,
+                          padding: '6px 12px',
+                          borderRadius: '9999px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}>
+                          {catMeta.markingMode === 'Auto-marked' ? '⚡' : '✍️'} {catMeta.markingMode}
+                        </span>
+
+                        {/* Cycle Limit */}
+                        {catMeta.cycleLimit && (
+                          <span style={{
+                            background: '#f8fafc',
+                            color: '#475569',
+                            border: '1px solid #cbd5e1',
+                            padding: '6px 12px',
+                            borderRadius: '9999px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}>
+                            ⏱️ {catMeta.cycleLimit}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {catMeta.specialNote && (
+                      <div style={{ marginTop: '16px', padding: '10px 14px', background: catMeta.accentBg, border: `1px solid ${catMeta.accentBorder}`, borderRadius: '10px', fontSize: '0.82rem', color: '#1e293b' }}>
+                        ℹ️ <strong>Access & Marking Policy:</strong> {catMeta.specialNote}
+                      </div>
+                    )}
+
+                    {/* Formula Banner for Academics */}
+                    {isAcademics && (
+                      <div style={{
+                        marginTop: '18px',
+                        background: '#f5f3ff',
+                        border: '1.5px solid #ddd6fe',
+                        borderRadius: '12px',
+                        padding: '16px 20px',
+                        color: '#4c1d95'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '1.2rem' }}>🧮</span>
+                          <strong style={{ fontSize: '0.95rem', fontWeight: 800 }}>Academics Scoring Formula (Automated):</strong>
+                        </div>
+                        <div style={{
+                          background: '#ffffff',
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          border: '1px solid #c4b5fd',
+                          fontFamily: 'monospace',
+                          fontSize: '0.92rem',
+                          fontWeight: 700,
+                          color: '#5b21b6',
+                          marginBottom: '10px'
+                        }}>
+                          Marks = (N<sub>≥90%</sub> × 5) + (N<sub>80-90%</sub> × 4) + (N<sub>70-80%</sub> × 3) + PassBonus - N<sub>Fail</sub>
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#6b21a8' }}>
+                          <strong>PassBonus Tier Matrix:</strong>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                            <span style={{ background: '#ffffff', border: '1px solid #ddd6fe', padding: '3px 8px', borderRadius: '6px' }}>100 – 90.01%: <strong>+5 marks</strong></span>
+                            <span style={{ background: '#ffffff', border: '1px solid #ddd6fe', padding: '3px 8px', borderRadius: '6px' }}>90 – 80.01%: <strong>+4 marks</strong></span>
+                            <span style={{ background: '#ffffff', border: '1px solid #ddd6fe', padding: '3px 8px', borderRadius: '6px' }}>80 – 70.01%: <strong>+3 marks</strong></span>
+                            <span style={{ background: '#ffffff', border: '1px solid #ddd6fe', padding: '3px 8px', borderRadius: '6px' }}>70 – 60.01%: <strong>+2 marks</strong></span>
+                            <span style={{ background: '#ffffff', border: '1px solid #ddd6fe', padding: '3px 8px', borderRadius: '6px' }}>60 – 50.01%: <strong>+1 mark</strong></span>
+                            <span style={{ background: '#ffffff', border: '1px solid #ddd6fe', padding: '3px 8px', borderRadius: '6px' }}>&lt; 50%: <strong>0 marks</strong></span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add Item form */}
+                  {showAddItemForm && (
+                    <div className="card" style={{ border: '1.5px solid var(--primary)', background: '#ffffff', borderRadius: '16px', padding: '24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
+                          Add Criteria Item to {catTitle}
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddItemForm(false)}
+                          style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontWeight: 700 }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleCreateCriteriaItem} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div className="form-group">
-                          <label className="form-label" style={{ fontWeight: 800, fontSize: '0.84rem' }}>MARKS / VALUE</label>
+                          <label className="form-label" style={{ fontWeight: 800, fontSize: '0.84rem' }}>
+                            ITEM TITLE <span style={{ color: '#ef4444' }}>*</span>
+                          </label>
                           <input
-                            type="number"
+                            type="text"
                             className="input"
-                            value={newItemMarks}
-                            onChange={(e) => setNewItemMarks(Number(e.target.value))}
+                            placeholder="e.g. From Marian College, Paper Presentation, Swayam / NPTEL Course..."
+                            value={newItemTitle}
+                            onChange={(e) => setNewItemTitle(e.target.value)}
                             required
                           />
                         </div>
-                      </div>
 
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 800, fontSize: '0.84rem' }}>DETAILS / DESCRIPTION</label>
-                        <input
-                          type="text"
-                          className="input"
-                          placeholder="e.g. per award / presentation"
-                          value={newItemDetails}
-                          onChange={(e) => setNewItemDetails(e.target.value)}
-                        />
-                      </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 800, fontSize: '0.84rem' }}>TYPE</label>
+                            <select
+                              className="select"
+                              value={newItemType}
+                              onChange={(e) => setNewItemType(e.target.value)}
+                            >
+                              <option value="Count Based">Count Based</option>
+                              <option value="Fixed">Fixed</option>
+                              <option value="Range Based">Range Based</option>
+                              <option value="Negative Marks">Negative Marks</option>
+                            </select>
+                          </div>
 
-                      {/* Sub-Categories toggle & list */}
-                      <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', color: '#1e293b' }}>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 800, fontSize: '0.84rem' }}>MARKS / VALUE</label>
+                            <input
+                              type="number"
+                              className="input"
+                              value={newItemMarks}
+                              onChange={(e) => setNewItemMarks(Number(e.target.value))}
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontWeight: 800, fontSize: '0.84rem' }}>DETAILS / DESCRIPTION</label>
                           <input
-                            type="checkbox"
-                            checked={newItemHasSubItems}
-                            onChange={(e) => setNewItemHasSubItems(e.target.checked)}
-                            style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }}
+                            type="text"
+                            className="input"
+                            placeholder="e.g. per award / presentation"
+                            value={newItemDetails}
+                            onChange={(e) => setNewItemDetails(e.target.value)}
                           />
-                          <span>⚡ Enable Sub-Categories / Sub-Items (e.g. 1st Prize, 2nd Prize, etc.)</span>
-                        </label>
+                        </div>
 
-                        {newItemHasSubItems && (
-                          <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {newItemSubItems.map((sub, sIdx) => (
-                              <div key={sIdx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {/* Sub-Categories toggle & list */}
+                        <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', color: '#1e293b' }}>
+                            <input
+                              type="checkbox"
+                              checked={newItemHasSubItems}
+                              onChange={(e) => setNewItemHasSubItems(e.target.checked)}
+                              style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }}
+                            />
+                            <span>⚡ Enable Sub-Categories / Sub-Items (e.g. 1st Prize, 2nd Prize, etc.)</span>
+                          </label>
+
+                          {newItemHasSubItems && (
+                            <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              {newItemSubItems.map((sub, sIdx) => (
+                                <div key={sIdx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                  <input
+                                    type="text"
+                                    className="input"
+                                    value={sub.key}
+                                    readOnly
+                                    style={{ flex: 1, background: '#ffffff', fontWeight: 600 }}
+                                  />
+                                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#64748b' }}>
+                                    {sub.marks} marks
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setNewItemSubItems(prev => prev.filter((_, idx) => idx !== sIdx))}
+                                    style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', fontWeight: 700 }}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+
+                              <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
                                 <input
                                   type="text"
                                   className="input"
-                                  value={sub.key}
-                                  readOnly
-                                  style={{ flex: 1, background: '#ffffff', fontWeight: 600 }}
+                                  placeholder="Sub-category name (e.g. 1st Prize Individual)..."
+                                  value={newItemSubKey}
+                                  onChange={(e) => setNewItemSubKey(e.target.value)}
+                                  style={{ flex: 1 }}
                                 />
-                                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#64748b' }}>
-                                  {sub.marks} marks
-                                </span>
+                                <input
+                                  type="number"
+                                  className="input"
+                                  placeholder="Marks"
+                                  value={newItemSubMarks}
+                                  onChange={(e) => setNewItemSubMarks(Number(e.target.value))}
+                                  style={{ width: '90px', textAlign: 'center' }}
+                                />
                                 <button
                                   type="button"
-                                  onClick={() => setNewItemSubItems(prev => prev.filter((_, idx) => idx !== sIdx))}
-                                  style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', fontWeight: 700 }}
+                                  onClick={() => {
+                                    if (!newItemSubKey.trim()) {
+                                      toast.warning('Please enter sub-category name');
+                                      return;
+                                    }
+                                    setNewItemSubItems(prev => [...prev, { key: newItemSubKey.trim(), marks: newItemSubMarks }]);
+                                    setNewItemSubKey('');
+                                    setNewItemSubMarks(5);
+                                  }}
+                                  style={{ background: '#6366f1', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '8px 16px', fontWeight: 700, cursor: 'pointer' }}
                                 >
-                                  ✕
+                                  + Add
                                 </button>
                               </div>
-                            ))}
-
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                              <input
-                                type="text"
-                                className="input"
-                                placeholder="Sub-category name (e.g. 1st Prize Individual)..."
-                                value={newItemSubKey}
-                                onChange={(e) => setNewItemSubKey(e.target.value)}
-                                style={{ flex: 1 }}
-                              />
-                              <input
-                                type="number"
-                                className="input"
-                                placeholder="Marks"
-                                value={newItemSubMarks}
-                                onChange={(e) => setNewItemSubMarks(Number(e.target.value))}
-                                style={{ width: '90px', textAlign: 'center' }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (!newItemSubKey.trim()) {
-                                    toast.warning('Please enter sub-category name');
-                                    return;
-                                  }
-                                  setNewItemSubItems(prev => [...prev, { key: newItemSubKey.trim(), marks: newItemSubMarks }]);
-                                  setNewItemSubKey('');
-                                  setNewItemSubMarks(5);
-                                }}
-                                style={{ background: '#6366f1', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '8px 16px', fontWeight: 700, cursor: 'pointer' }}
-                              >
-                                + Add
-                              </button>
                             </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Fields Wanted for Student Submissions */}
-                      <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
-                        <label style={{ display: 'block', fontWeight: 800, fontSize: '0.86rem', color: '#1e293b', marginBottom: '8px' }}>
-                          📋 Fields Wanted for Student Submissions:
-                        </label>
-                        <p className="muted" style={{ fontSize: '0.78rem', margin: '0 0 12px 0' }}>
-                          Check what fields students must fill out when submitting this item:
-                        </p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={newItemFields.url}
-                              onChange={(e) => setNewItemFields(prev => ({ ...prev, url: e.target.checked }))}
-                              style={{ accentColor: 'var(--primary)' }}
-                            />
-                            🔗 Google Drive Link URL
-                          </label>
-
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={newItemFields.date}
-                              onChange={(e) => setNewItemFields(prev => ({ ...prev, date: e.target.checked }))}
-                              style={{ accentColor: 'var(--primary)' }}
-                            />
-                            📅 Date Field
-                          </label>
-
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={newItemFields.text}
-                              onChange={(e) => setNewItemFields(prev => ({ ...prev, text: e.target.checked }))}
-                              style={{ accentColor: 'var(--primary)' }}
-                            />
-                            📝 Text Field (Activity / Title / Topic)
-                          </label>
-
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={newItemFields.count}
-                              onChange={(e) => setNewItemFields(prev => ({ ...prev, count: e.target.checked }))}
-                              style={{ accentColor: 'var(--primary)' }}
-                            />
-                            🔢 Count / Frequency Field
-                          </label>
-
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={newItemFields.description}
-                              onChange={(e) => setNewItemFields(prev => ({ ...prev, description: e.target.checked }))}
-                              style={{ accentColor: 'var(--primary)' }}
-                            />
-                            📄 Description / Notes Field
-                          </label>
+                          )}
                         </div>
-                      </div>
 
-                      <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                        <button type="submit" className="btn btn-primary btn-sm" style={{ fontWeight: 700 }}>Save Item</button>
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddItemForm(false)}>Cancel</button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-
-                {/* Items list card */}
-                <div className="card">
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {((criteriaCatalog.find(c => c.id === selectedCategory.id)?.items) || []).map((item: any) => (
-                      <div
-                        key={item.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          paddingBottom: '16px',
-                          borderBottom: '1px solid var(--glass-border)'
-                        }}
-                      >
-                        <div>
-                          <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: '0 0 6px 0' }}>{item.title}</h3>
-                          <p className="muted" style={{ fontSize: '0.8rem', margin: '0 0 4px 0' }}>
-                            Type: {item.type} | Marks: {item.marks} {item.type === 'Count Based' ? '/ count' : ''}
+                        {/* Fields Wanted for Student Submissions */}
+                        <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
+                          <label style={{ display: 'block', fontWeight: 800, fontSize: '0.86rem', color: '#1e293b', marginBottom: '8px' }}>
+                            📋 Fields Wanted for Student Submissions:
+                          </label>
+                          <p className="muted" style={{ fontSize: '0.78rem', margin: '0 0 12px 0' }}>
+                            Check what fields students must fill out when submitting this item:
                           </p>
-                          <p className="muted" style={{ fontSize: '0.78rem', margin: 0, fontWeight: 600 }}>{item.details}</p>
-                          {item.rules_json && item.rules_json.subItems && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
-                              {Object.entries(item.rules_json.subItems).map(([subKey, subMarks]) => (
-                                <span key={subKey} style={{
-                                  background: '#f1f5f9',
-                                  border: '1px solid #e2e8f0',
-                                  color: '#334155',
-                                  padding: '4px 10px',
-                                  borderRadius: '9999px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 700,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '6px'
-                                }}>
-                                  {subKey}
-                                  <span style={{
-                                    background: '#ffffff',
-                                    color: '#ea580c',
-                                    padding: '2px 6px',
-                                    borderRadius: '9999px',
-                                    fontSize: '0.7rem',
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                                  }}>{String(subMarks)} marks</span>
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {item.rules_json && item.rules_json.fields && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
-                              {item.rules_json.fields.url && (
-                                <span style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px' }}>
-                                  🔗 Drive Link
-                                </span>
-                              )}
-                              {item.rules_json.fields.date && (
-                                <span style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px' }}>
-                                  📅 Date
-                                </span>
-                              )}
-                              {item.rules_json.fields.text && (
-                                <span style={{ background: '#faf5ff', color: '#7c3aed', border: '1px solid #e9d5ff', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px' }}>
-                                  📝 Activity Details
-                                </span>
-                              )}
-                              {item.rules_json.fields.count && (
-                                <span style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px' }}>
-                                  🔢 Count
-                                </span>
-                              )}
-                              {item.rules_json.fields.description && (
-                                <span style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px' }}>
-                                  📄 Description
-                                </span>
-                              )}
-                            </div>
-                          )}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={newItemFields.url}
+                                onChange={(e) => setNewItemFields(prev => ({ ...prev, url: e.target.checked }))}
+                                style={{ accentColor: 'var(--primary)' }}
+                              />
+                              🔗 Google Drive Link URL
+                            </label>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={newItemFields.date}
+                                onChange={(e) => setNewItemFields(prev => ({ ...prev, date: e.target.checked }))}
+                                style={{ accentColor: 'var(--primary)' }}
+                              />
+                              📅 Date Field
+                            </label>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={newItemFields.text}
+                                onChange={(e) => setNewItemFields(prev => ({ ...prev, text: e.target.checked }))}
+                                style={{ accentColor: 'var(--primary)' }}
+                              />
+                              📝 Text Field (Activity / Title / Topic)
+                            </label>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={newItemFields.count}
+                                onChange={(e) => setNewItemFields(prev => ({ ...prev, count: e.target.checked }))}
+                                style={{ accentColor: 'var(--primary)' }}
+                              />
+                              🔢 Count / Frequency Field
+                            </label>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={newItemFields.description}
+                                onChange={(e) => setNewItemFields(prev => ({ ...prev, description: e.target.checked }))}
+                                style={{ accentColor: 'var(--primary)' }}
+                              />
+                              📄 Description / Notes Field
+                            </label>
+                          </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            className="btn btn-sm btn-secondary"
-                            style={{ fontWeight: 700 }}
-                            onClick={() => handleEditCriteriaItemPrompt(selectedCategory.id, item.id)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-sm"
-                            style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', fontWeight: 700 }}
-                            onClick={() => handleDeleteCriteriaItem(selectedCategory.id, item.id)}
-                          >
-                            Delete
-                          </button>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                          <button type="submit" className="btn btn-primary btn-sm" style={{ fontWeight: 700 }}>Save Item</button>
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddItemForm(false)}>Cancel</button>
                         </div>
-                      </div>
-                    ))}
-                    {((criteriaCatalog.find(c => c.id === selectedCategory.id)?.items) || []).length === 0 && (
-                      <p className="muted" style={{ fontSize: '0.88rem', textAlign: 'center', padding: '20px' }}>No evaluation items added to this module yet.</p>
-                    )}
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Items list card */}
+                  <div className="card" style={{ background: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: '0 0 16px 0' }}>
+                      Evaluation Items & Subcategories ({items.length})
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {items.map((item: any) => (
+                        <div
+                          key={item.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
+                            padding: '16px',
+                            background: '#f8fafc',
+                            borderRadius: '12px',
+                            border: '1px solid #e2e8f0',
+                            gap: '16px'
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>{item.title}</h3>
+                              <span style={{
+                                background: '#e0e7ff',
+                                color: '#3730a3',
+                                border: '1px solid #c7d2fe',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '9999px'
+                              }}>
+                                {item.type}
+                              </span>
+                              <span style={{
+                                background: '#fef3c7',
+                                color: '#92400e',
+                                border: '1px solid #fde68a',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '9999px'
+                              }}>
+                                Base: {item.marks} marks {item.type === 'Count Based' ? '/ count' : ''}
+                              </span>
+                            </div>
+
+                            <p className="muted" style={{ fontSize: '0.82rem', margin: '0 0 10px 0', lineHeight: 1.45 }}>
+                              {item.details}
+                            </p>
+
+                            {/* Sub-items / Subcategories Breakdown */}
+                            {item.rules_json && item.rules_json.subItems && Object.keys(item.rules_json.subItems).length > 0 && (
+                              <div style={{ marginTop: '10px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px' }}>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                                  Subcategories & Mark Distribution:
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                  {Object.entries(item.rules_json.subItems).map(([subKey, subMarks]) => {
+                                    const isGroup = subKey.toLowerCase().includes('group');
+                                    return (
+                                      <span key={subKey} style={{
+                                        background: isGroup ? '#f5f3ff' : '#f8fafc',
+                                        border: `1px solid ${isGroup ? '#ddd6fe' : '#e2e8f0'}`,
+                                        color: isGroup ? '#5b21b6' : '#334155',
+                                        padding: '4px 10px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.76rem',
+                                        fontWeight: 600,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                      }}>
+                                        {subKey}
+                                        {isGroup && (
+                                          <span style={{ background: '#ede9fe', color: '#6d28d9', padding: '1px 5px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>
+                                            DQC
+                                          </span>
+                                        )}
+                                        <span style={{
+                                          background: '#ffffff',
+                                          color: '#ea580c',
+                                          padding: '2px 6px',
+                                          borderRadius: '6px',
+                                          fontSize: '0.72rem',
+                                          fontWeight: 800,
+                                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                          border: '1px solid #fed7aa'
+                                        }}>{String(subMarks)} marks</span>
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Fields chips */}
+                            {item.rules_json && item.rules_json.fields && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+                                {item.rules_json.fields.url && (
+                                  <span style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px' }}>
+                                    🔗 Drive Link
+                                  </span>
+                                )}
+                                {item.rules_json.fields.date && (
+                                  <span style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px' }}>
+                                    📅 Date
+                                  </span>
+                                )}
+                                {item.rules_json.fields.text && (
+                                  <span style={{ background: '#faf5ff', color: '#7c3aed', border: '1px solid #e9d5ff', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px' }}>
+                                    📝 Activity Details
+                                  </span>
+                                )}
+                                {item.rules_json.fields.count && (
+                                  <span style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px' }}>
+                                    🔢 Count / Grade
+                                  </span>
+                                )}
+                                {item.rules_json.fields.description && (
+                                  <span style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px' }}>
+                                    📄 Description
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              className="btn btn-sm btn-secondary"
+                              style={{ fontWeight: 700 }}
+                              onClick={() => handleEditCriteriaItemPrompt(selectedCategory.id, item.id)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="btn btn-sm"
+                              style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', fontWeight: 700 }}
+                              onClick={() => handleDeleteCriteriaItem(selectedCategory.id, item.id)}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {items.length === 0 && (
+                        <p className="muted" style={{ fontSize: '0.88rem', textAlign: 'center', padding: '20px' }}>No evaluation items added to this category yet.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
+              );
+            })() : (
               <>
                 <div className="admin-header-row">
                   <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Criteria Categories</h1>
-                    <p className="muted" style={{ fontSize: '0.88rem' }}>Manage and organize evaluation criteria hierarchies.</p>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Master Criteria Categories</h1>
+                    <p className="muted" style={{ fontSize: '0.88rem' }}>
+                      Official 12-category master specification for student scoring, verification, and evaluation.
+                    </p>
                   </div>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <select
@@ -1111,57 +1466,156 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({ view }) => {
                 </div>
 
                 {/* Criteria Grid */}
-                <div className="criteria-grid-wrapper">
-                  {criteriaCatalog.map((c) => (
-                    <div
-                      key={c.id}
-                      className="card"
-                      style={{
-                        padding: '20px 24px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        border: '1.5px solid var(--glass-border)',
-                        boxShadow: 'none',
-                        borderRadius: '14px',
-                        minHeight: '140px',
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => setSelectedCategory(c)}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '1.5rem' }}>⚡</span>
-                          <div style={{ display: 'flex', gap: '10px' }}>
-                            <button
-                                className="btn btn-sm"
-                                style={{ background: 'transparent', color: '#ef4444', border: 'none', padding: 0 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setConfirmModal({
-                                    isOpen: true,
-                                    title: 'Delete Category',
-                                    description: `Are you sure you want to delete category "${c.category}"?`,
-                                    confirmText: 'Delete Category',
-                                    confirmVariant: 'danger',
-                                    onConfirm: () => {
-                                      deleteCriteriaCategory(c.id);
-                                      setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-                                      toast.info(`Category "${c.category}" deleted.`);
-                                    },
-                                  });
-                                }}
-                            >
-                                Delete
-                            </button>
-                            <span style={{ color: 'var(--text-muted)', fontSize: '1.2rem', cursor: 'pointer' }}>&rarr;</span>
+                <div className="criteria-grid-wrapper" style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                  gap: '20px'
+                }}>
+                  {criteriaCatalog
+                    .filter((c) => {
+                      const code = (c.code || c.id || '').toString().toLowerCase();
+                      const name = (c.category || (c as any).title || '').toString().toLowerCase();
+                      return !code.includes('documentation') && !name.includes('documentation');
+                    })
+                    .map((c, catIdx) => {
+                      const meta = getCategoryMetadata(c);
+                      const catName = c.category || (c as any).title || 'Category';
+                      const itemCount = c.items?.length || 0;
+
+                      return (
+                        <div
+                          key={c.id || catIdx}
+                          className="card"
+                          style={{
+                            padding: '22px 24px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            border: `1.5px solid ${meta.accentBorder}`,
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+                            borderRadius: '16px',
+                            background: '#ffffff',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            position: 'relative'
+                          }}
+                          onClick={() => setSelectedCategory(c)}
+                        >
+                          <div>
+                            {/* Top header row */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                              <div style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '12px',
+                                background: meta.accentBg,
+                                border: `1px solid ${meta.accentBorder}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '1.6rem'
+                              }}>
+                                {meta.icon}
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <button
+                                  className="btn btn-sm"
+                                  style={{ background: 'transparent', color: '#ef4444', border: 'none', padding: '4px 8px', fontSize: '0.78rem', fontWeight: 700 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmModal({
+                                      isOpen: true,
+                                      title: 'Delete Category',
+                                      description: `Are you sure you want to delete category "${catName}"?`,
+                                      confirmText: 'Delete Category',
+                                      confirmVariant: 'danger',
+                                      onConfirm: () => {
+                                        deleteCriteriaCategory(c.id);
+                                        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+                                        toast.info(`Category "${catName}" deleted.`);
+                                      },
+                                    });
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                                <span style={{ color: meta.accent, fontSize: '1.3rem', fontWeight: 800 }}>&rarr;</span>
+                              </div>
+                            </div>
+
+                            {/* Category Title */}
+                            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 6px 0', color: '#0f172a' }}>
+                              {catName}
+                            </h3>
+
+                            {/* Badges Row */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                              {/* Access Badge */}
+                              <span style={{
+                                background: meta.accessType === 'dqc' ? '#f3e8ff' : meta.accessType === 'hybrid' ? '#fef3c7' : '#e0f2fe',
+                                color: meta.accessType === 'dqc' ? '#6b21a8' : meta.accessType === 'hybrid' ? '#92400e' : '#0369a1',
+                                border: `1px solid ${meta.accessType === 'dqc' ? '#d8b4fe' : meta.accessType === 'hybrid' ? '#fde68a' : '#7dd3fc'}`,
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700
+                              }}>
+                                {meta.accessType === 'dqc' ? '🔒 DQC Only' : meta.accessType === 'hybrid' ? '⚖️ Hybrid' : '🌐 All Students'}
+                              </span>
+
+                              {/* Marking Mode Badge */}
+                              <span style={{
+                                background: meta.markingMode === 'Auto-marked' ? '#dcfce7' : '#ffedd5',
+                                color: meta.markingMode === 'Auto-marked' ? '#166534' : '#9a3412',
+                                border: `1px solid ${meta.markingMode === 'Auto-marked' ? '#86efac' : '#fdba74'}`,
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700
+                              }}>
+                                {meta.markingMode === 'Auto-marked' ? '⚡ Auto' : '✍️ Manual'}
+                              </span>
+
+                              {meta.cycleLimit && (
+                                <span style={{
+                                  background: '#f8fafc',
+                                  color: '#475569',
+                                  border: '1px solid #cbd5e1',
+                                  padding: '2px 8px',
+                                  borderRadius: '9999px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600
+                                }}>
+                                  ⏱️ {meta.cycleLimit.split('(')[0].trim()}
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="muted" style={{ fontSize: '0.82rem', margin: '0 0 14px 0', lineHeight: 1.45 }}>
+                              {(c as any).desc || 'Official evaluation category configured for Marian Excellence Grid.'}
+                            </p>
+                          </div>
+
+                          {/* Footer with subcategory count */}
+                          <div style={{
+                            paddingTop: '12px',
+                            borderTop: '1px solid #f1f5f9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            fontSize: '0.78rem',
+                            color: '#64748b'
+                          }}>
+                            <span style={{ fontWeight: 700 }}>
+                              📦 {itemCount} evaluation {itemCount === 1 ? 'item' : 'items'}
+                            </span>
+                            <span style={{ color: meta.accent, fontWeight: 700 }}>
+                              Manage &rarr;
+                            </span>
                           </div>
                         </div>
-                        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: '0 0 6px 0', color: '#0f172a' }}>{c.category}</h3>
-                        <p className="muted" style={{ fontSize: '0.8rem', margin: 0, lineHeight: 1.4 }}>{(c as any).desc || 'No description provided.'}</p>
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    })}
                 </div>
               </>
             )}

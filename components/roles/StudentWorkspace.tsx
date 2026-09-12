@@ -89,10 +89,6 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         code === 'cat-academics' ||
         id === 'cat-academics' ||
         id === '1' ||
-        name === 'documentation' ||
-        code === 'cat-documentation' ||
-        id === 'cat-documentation' ||
-        id === '12' ||
         name === 'programs organized' ||
         code === 'cat-programs-organized' ||
         id === 'cat-programs-organized' ||
@@ -177,16 +173,115 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
   }, [currentItem]);
 
   // Academic Category State (Submission Types & Mark Breakdown)
-  const [academicSubmissionType, setAcademicSubmissionType] = useState<'Sem Result' | 'SAVE Sem Result'>('Sem Result');
-  const [count90Above, setCount90Above] = useState<number>(0);
-  const [count80to90, setCount80to90] = useState<number>(0);
-  const [count70to80, setCount70to80] = useState<number>(0);
-  const [count60to70, setCount60to70] = useState<number>(0);
-  const [count50to60, setCount50to60] = useState<number>(0);
-  const [count40to50, setCount40to50] = useState<number>(0);
-  const [countOtherPass, setCountOtherPass] = useState<number>(0);
-  const [failCount, setFailCount] = useState<number>(0);
-  const [passPercentage, setPassPercentage] = useState<number>(0);
+  const [academicSubmissionType, setAcademicSubmissionType] = useState<string>('Sem Result (End Semester Examination)');
+  const [count90Above, setCount90Above] = useState<number | string>('');
+  const [count80to90, setCount80to90] = useState<number | string>('');
+  const [count70to80, setCount70to80] = useState<number | string>('');
+  const [failCount, setFailCount] = useState<number | string>('');
+  const [passPercentage, setPassPercentage] = useState<number | string>('');
+
+  const num90 = typeof count90Above === 'number' ? count90Above : (count90Above ? parseInt(String(count90Above), 10) || 0 : 0);
+  const num80 = typeof count80to90 === 'number' ? count80to90 : (count80to90 ? parseInt(String(count80to90), 10) || 0 : 0);
+  const num70 = typeof count70to80 === 'number' ? count70to80 : (count70to80 ? parseInt(String(count70to80), 10) || 0 : 0);
+  const numFail = typeof failCount === 'number' ? failCount : (failCount ? parseInt(String(failCount), 10) || 0 : 0);
+  const rawPassPct = typeof passPercentage === 'number' ? passPercentage : (passPercentage ? parseFloat(String(passPercentage)) || 0 : 0);
+
+  // Strict positive integer keydown handler (blocks -, +, *, /, e, E, ., etc.)
+  const handlePositiveIntegerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+      return;
+    }
+    if (e.ctrlKey || e.metaKey) {
+      return;
+    }
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handlePositiveIntegerChange = (valStr: string, setter: (val: number | string) => void) => {
+    const cleaned = valStr.replace(/[^0-9]/g, '');
+    setter(cleaned);
+  };
+
+  const handlePositiveIntegerPaste = (e: React.ClipboardEvent<HTMLInputElement>, setter: (val: number | string) => void) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text');
+    const cleaned = pasted.replace(/[^0-9]/g, '');
+    setter(cleaned);
+  };
+
+  // Strict positive percentage keydown handler (blocks -, +, *, /, e, E, etc., allows single .)
+  const handlePassPercentageKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+      return;
+    }
+    if (e.ctrlKey || e.metaKey) {
+      return;
+    }
+    if (e.key === '.') {
+      const currentVal = (e.currentTarget.value || '').toString();
+      if (currentVal.includes('.')) {
+        e.preventDefault();
+      }
+      return;
+    }
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handlePassPercentageChange = (valStr: string) => {
+    let cleaned = valStr.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+    if (cleaned === '') {
+      setPassPercentage('');
+      return;
+    }
+    const num = parseFloat(cleaned);
+    if (!isNaN(num) && num > 100) {
+      setPassPercentage('100');
+    } else {
+      setPassPercentage(cleaned);
+    }
+  };
+
+  const handlePassPercentagePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text');
+    let cleaned = pasted.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+    if (cleaned === '') {
+      setPassPercentage('');
+      return;
+    }
+    const num = parseFloat(cleaned);
+    if (!isNaN(num) && num > 100) {
+      setPassPercentage('100');
+    } else {
+      setPassPercentage(cleaned);
+    }
+  };
+
+  const academicPassBonus = React.useMemo(() => {
+    if (rawPassPct > 90.0) return 5;
+    if (rawPassPct > 80.0) return 4;
+    if (rawPassPct > 70.0) return 3;
+    if (rawPassPct > 60.0) return 2;
+    if (rawPassPct > 50.0) return 1;
+    return 0;
+  }, [rawPassPct]);
+
+  const computedAcademicMarks = React.useMemo(() => {
+    const rawScore = (num90 * 5) + (num80 * 4) + (num70 * 3) + academicPassBonus - numFail;
+    return Math.max(0, rawScore);
+  }, [num90, num80, num70, academicPassBonus, numFail]);
 
   const isAcademicCategory = React.useMemo(() => {
     if (!currentCategory) return false;
@@ -338,7 +433,8 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       return [
         '1st Prize (Individual)',
         '2nd Prize (Individual)',
-        '3rd Prize (Individual)'
+        '3rd Prize (Individual)',
+        'Participation (Individual)'
       ];
     }
 
@@ -517,27 +613,34 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         else if (sub.evidence?.endDate) setEndDate(sub.evidence.endDate);
         if (sub.evidence?.count) setCountValue(sub.evidence.count);
         if (sub.evidence?.submissionType) {
-          setAcademicSubmissionType(sub.evidence.submissionType as 'Sem Result' | 'SAVE Sem Result');
+          setAcademicSubmissionType(sub.evidence.submissionType);
         }
         if (sub.grade_breakdown) {
-          setCount90Above(sub.grade_breakdown.s_grade_count || 0);
-          setCount80to90(sub.grade_breakdown.a_plus_grade_count || 0);
-          setCount70to80(sub.grade_breakdown.a_grade_count || 0);
-          setCountOtherPass(sub.grade_breakdown.other_pass_count || 0);
-          setFailCount(sub.grade_breakdown.failed_count || 0);
-          if (sub.grade_breakdown.class_pass_percentage !== undefined) {
-            setPassPercentage(sub.grade_breakdown.class_pass_percentage);
+          const gb: any = sub.grade_breakdown;
+          setCount90Above(gb.count_90_above ?? gb.s_grade_count ?? '');
+          setCount80to90(gb.count_80_90 ?? gb.a_plus_grade_count ?? '');
+          setCount70to80(gb.count_70_80 ?? gb.a_grade_count ?? '');
+          setFailCount(gb.count_fail ?? gb.failed_count ?? '');
+          if (gb.pass_percentage !== undefined || gb.class_pass_percentage !== undefined) {
+            setPassPercentage(gb.pass_percentage ?? gb.class_pass_percentage);
           }
         } else if (sub.evidence?.markBreakdown || sub.evidence?.grades) {
-          const mb = sub.evidence.markBreakdown || sub.evidence.grades || {};
-          setCount90Above(mb.count90Above ?? mb['90Above'] ?? mb.S ?? 0);
-          setCount80to90(mb.count80to90 ?? mb['80to90'] ?? mb.APlus ?? 0);
-          setCount70to80(mb.count70to80 ?? mb['70to80'] ?? mb.A ?? 0);
-          setCount60to70(mb.count60to70 ?? mb['60to70'] ?? 0);
-          setCount50to60(mb.count50to60 ?? mb['50to60'] ?? 0);
-          setCount40to50(mb.count40to50 ?? mb['40to50'] ?? 0);
-          setCountOtherPass(mb.countOtherPass ?? mb.otherPassCount ?? mb.OtherPass ?? ((mb.count60to70 || 0) + (mb.count50to60 || 0) + (mb.count40to50 || 0)));
-          setFailCount(mb.failCount ?? mb['below40'] ?? mb.Fail ?? 0);
+          const mb: any = sub.evidence.markBreakdown || sub.evidence.grades || {};
+          setCount90Above(mb.count_90_above ?? mb.count90Above ?? mb.S ?? '');
+          setCount80to90(mb.count_80_90 ?? mb.count80to90 ?? mb.APlus ?? '');
+          setCount70to80(mb.count_70_80 ?? mb.count70to80 ?? mb.A ?? '');
+          setFailCount(mb.count_fail ?? mb.failCount ?? mb.Fail ?? '');
+          if (mb.pass_percentage !== undefined || mb.classPassPercentage !== undefined) {
+            setPassPercentage(mb.pass_percentage ?? mb.classPassPercentage);
+          }
+        } else if (sub.evidence?.count_90_above !== undefined || sub.evidence?.pass_percentage !== undefined) {
+          setCount90Above(sub.evidence.count_90_above ?? '');
+          setCount80to90(sub.evidence.count_80_90 ?? '');
+          setCount70to80(sub.evidence.count_70_80 ?? '');
+          setFailCount(sub.evidence.count_fail ?? '');
+          if (sub.evidence.pass_percentage !== undefined) {
+            setPassPercentage(sub.evidence.pass_percentage);
+          }
         }
         if (!sub.grade_breakdown && sub.evidence?.classPassPercentage !== undefined) {
           setPassPercentage(sub.evidence.classPassPercentage);
@@ -1030,12 +1133,13 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       currentCategory?.code === 'cat-prizes' ||
       currentCategory?.category.toLowerCase().trim().includes('prize');
 
-    const isDocumentation =
-      currentCategory?.id === 'cat-documentation' ||
-      currentCategory?.code === 'cat-documentation' ||
-      currentCategory?.category.toLowerCase().trim() === 'documentation';
+    const isDriveUrl = (str: string) => {
+      const s = str.trim().toLowerCase();
+      return (s.startsWith('http://') || s.startsWith('https://')) &&
+        (s.includes('drive.google.com') || s.includes('docs.google.com'));
+    };
 
-    if ((isAcademicCategory || isProgramsOrganized || isDocumentation) && !isDqc) {
+    if ((isAcademicCategory || isProgramsOrganized || isLeadershipCategory || isSocialResponsibilityCategory) && !isDqc) {
       toast.error("Submissions to this category are restricted to DQC members only.");
       return;
     }
@@ -1043,6 +1147,47 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     if (isAcademicCategory && existingAcademicSubmission && !editingSubId) {
       toast.warning(`"${academicSubmissionType}" has already been updated for this evaluation cycle. Only one submission per type is allowed.`);
       return;
+    }
+
+    if (isAcademicCategory) {
+      if (num90 < 0 || num80 < 0 || num70 < 0 || numFail < 0) {
+        toast.error("Academic counts must only be positive numbers (0 or greater). Symbols like -, +, * are not permitted.");
+        return;
+      }
+      if (rawPassPct < 0 || rawPassPct > 100) {
+        toast.error("Pass percentage must be a positive number between 0 and 100.");
+        return;
+      }
+      if (count90Above && !/^\d+$/.test(String(count90Above).trim())) {
+        toast.error("count_90_above must only contain positive whole numbers (no -, +, *, e, etc.).");
+        return;
+      }
+      if (count80to90 && !/^\d+$/.test(String(count80to90).trim())) {
+        toast.error("count_80_90 must only contain positive whole numbers (no -, +, *, e, etc.).");
+        return;
+      }
+      if (count70to80 && !/^\d+$/.test(String(count70to80).trim())) {
+        toast.error("count_70_80 must only contain positive whole numbers (no -, +, *, e, etc.).");
+        return;
+      }
+      if (failCount && !/^\d+$/.test(String(failCount).trim())) {
+        toast.error("count_fail must only contain positive whole numbers (no -, +, *, e, etc.).");
+        return;
+      }
+      if (passPercentage && !/^\d+(\.\d+)?$/.test(String(passPercentage).trim())) {
+        toast.error("pass_percentage must only contain positive numbers between 0 and 100 (no -, +, *, e, etc.).");
+        return;
+      }
+      if (status === 'Submitted') {
+        if (!proofFile.trim()) {
+          toast.error("Please provide a Google Drive proof link URL before submitting.");
+          return;
+        }
+        if (!isDriveUrl(proofFile)) {
+          toast.error("Please provide a valid Google Drive link URL (e.g., https://drive.google.com/...) as proof document.");
+          return;
+        }
+      }
     }
 
     if (isOnlineCourses) {
@@ -1125,14 +1270,14 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       }
     }
 
-    const totalStudents = count90Above + count80to90 + count70to80 + countOtherPass + failCount;
-    const passedStudents = totalStudents - failCount;
+    const totalStudents = num90 + num80 + num70 + numFail;
+    const passedStudents = totalStudents - numFail;
     const autoPassPercentage = totalStudents > 0 ? parseFloat(((passedStudents / totalStudents) * 100).toFixed(2)) : 0;
-    const effectivePassPercentage = passPercentage > 0 ? passPercentage : autoPassPercentage;
+    const effectivePassPercentage = rawPassPct > 0 ? rawPassPct : autoPassPercentage;
 
     let finalDescription = description.trim();
     if (isAcademicCategory && !finalDescription) {
-      finalDescription = `${academicSubmissionType} Mark Summary — ≥90%: ${count90Above}, 80-90%: ${count80to90}, 70-80%: ${count70to80}, Other Pass: ${countOtherPass}, Fail: ${failCount} (Pass: ${effectivePassPercentage}%, Total: ${totalStudents} students)`;
+      finalDescription = `${academicSubmissionType} — ≥90%: ${num90}, 80-90%: ${num80}, 70-80%: ${num70}, Fail: ${numFail}${effectivePassPercentage > 0 ? `, Pass: ${effectivePassPercentage}%` : ''}`;
     } else if (isStartups && !finalDescription) {
       finalDescription = `Startup: ${startupName.trim()} | Reg. Date: ${startupDate} | Govt ID: ${startupGovtId.trim()}`;
     } else if (isResearch && !finalDescription) {
@@ -1163,12 +1308,6 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       finalDescription = `${currentItem?.title || currentCategory?.category || 'Activity Submission'}`;
     }
 
-    const isDriveUrl = (str: string) => {
-      const s = str.trim().toLowerCase();
-      return (s.startsWith('http://') || s.startsWith('https://')) &&
-        (s.includes('drive.google.com') || s.includes('docs.google.com'));
-    };
-
     if (isProgramsOrganized && !eventId.trim() && !proofFile.trim()) {
       toast.error("Please provide an Event ID or Google Drive proof link before submitting.");
       return;
@@ -1193,7 +1332,13 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     const computedEvidence = isAcademicCategory
       ? {
         type: 'academic_marks',
-        submissionType: academicSubmissionType
+        submissionType: academicSubmissionType,
+        count_90_above: num90,
+        count_80_90: num80,
+        count_70_80: num70,
+        count_fail: numFail,
+        pass_percentage: effectivePassPercentage,
+        estimated_marks: computedAcademicMarks
       }
       : isOnlineCourses
         ? {
@@ -1283,11 +1428,15 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     }
 
     const gradeBreakdownPayload = isAcademicCategory ? {
-      s_grade_count: count90Above,
-      a_plus_grade_count: count80to90,
-      a_grade_count: count70to80,
-      other_pass_count: countOtherPass,
-      failed_count: failCount,
+      count_90_above: num90,
+      count_80_90: num80,
+      count_70_80: num70,
+      count_fail: numFail,
+      pass_percentage: effectivePassPercentage,
+      s_grade_count: num90,
+      a_plus_grade_count: num80,
+      a_grade_count: num70,
+      failed_count: numFail,
       class_pass_percentage: effectivePassPercentage,
       total_students: totalStudents
     } : null;
@@ -1297,6 +1446,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
         criteriaId: selectedCriteriaId,
         description: finalDescription,
         proof: computedProof,
+        proof_url: computedProof,
         eventId: computedEventId,
         startDate: (isOnlineCourses || isInternshipsCategory) ? startDate : (isCompetitiveExamsCategory || isUpscExamItem) ? examDate : undefined,
         endDate: (isOnlineCourses || isInternshipsCategory) ? endDate : undefined,
@@ -1314,6 +1464,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
           status: initialStatus,
           remarks: status === 'Submitted' ? 'Awaiting Student Rep verification' : 'Saved as draft',
           proof: computedProof,
+          proof_url: computedProof,
           eventId: computedEventId,
           startDate: (isOnlineCourses || isInternshipsCategory) ? startDate : (isCompetitiveExamsCategory || isUpscExamItem) ? examDate : undefined,
           endDate: (isOnlineCourses || isInternshipsCategory) ? endDate : undefined,
@@ -1336,14 +1487,11 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     setEndDate('');
     setExamDate('');
     setCountValue(1);
-    setCount90Above(0);
-    setCount80to90(0);
-    setCount70to80(0);
-    setCount60to70(0);
-    setCount50to60(0);
-    setCount40to50(0);
-    setFailCount(0);
-    setPassPercentage(0);
+    setCount90Above('');
+    setCount80to90('');
+    setCount70to80('');
+    setFailCount('');
+    setPassPercentage('');
     setActivePage('submissions');
     router.push('/student/submissions');
   };
@@ -1750,157 +1898,220 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                   </div>
                 )}
 
-                {/* Academic Category Mark Breakdown Box */}
+                {/* Academic Category Master Specification Form */}
                 {isAcademicCategory ? (
-                  <div style={{ padding: '20px', background: 'rgba(99, 102, 241, 0.04)', border: '1.5px solid rgba(99, 102, 241, 0.2)', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ padding: '22px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)', border: '1.5px solid rgba(99, 102, 241, 0.25)', borderRadius: '18px', display: 'flex', flexDirection: 'column', gap: '18px', boxShadow: '0 4px 16px rgba(99, 102, 241, 0.06)' }}>
+                    {/* Header with Badges */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
-                        📊 Class Pass Percentage % ({academicSubmissionType})
-                      </h4>
-                      <span className="badge badge-verified" style={{ padding: '6px 14px', fontSize: '0.82rem', background: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe' }}>
-                        Total Students: {count90Above + count80to90 + count70to80 + failCount}
-                      </span>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
+                            🎓 1. Academics
+                          </h4>
+                          <span className="badge" style={{ background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe', fontWeight: 700, fontSize: '0.78rem' }}>
+                            DQC Members Only
+                          </span>
+                          <span className="badge" style={{ background: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe', fontWeight: 700, fontSize: '0.78rem' }}>
+                            Max 1/cycle
+                          </span>
+                          <span className="badge badge-verified" style={{ background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', fontWeight: 700, fontSize: '0.78rem' }}>
+                            ⚡ Auto-marked
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
+                          Sub-type: <strong style={{ color: '#0f172a' }}>Sem Result (End Semester Examination)</strong>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="badge" style={{ padding: '6px 14px', fontSize: '0.84rem', background: '#ffffff', color: '#4338ca', border: '1.5px solid #c7d2fe', fontWeight: 800, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                          Total Accounted: {num90 + num80 + num70 + numFail} students
+                        </span>
+                      </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
-                      {(() => {
-                        // Dynamically read labels from criteriaCatalog Academics items
-                        const academicsCat = criteriaCatalog.find((c) =>
-                          String(c.category).toLowerCase() === 'academics' ||
-                          String(c.code).toLowerCase() === 'cat-academics' ||
-                          String(c.id).toLowerCase() === 'cat-academics'
-                        );
-                        const acItems = academicsCat?.items || [];
-                        // Match items by type — order: count items by marks desc, then negative, then academic_grades
-                        const countItems = acItems
-                          .filter((i: any) => i.type === 'count')
-                          .sort((a: any, b: any) => (b.marks || 0) - (a.marks || 0));
-                        const failItem = acItems.find((i: any) => i.type === 'negative');
-                        const passItem = acItems.find((i: any) => i.type === 'academic_grades');
+                    {/* 5 Optional Fields */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '14px' }}>
+                      {/* Field 1: count_90_above */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ color: '#4f46e5', fontWeight: 800, fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span>⭐ count_90_above</span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 500, color: '#6366f1' }}>≥ 90% (5 marks)</span>
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          className="input"
+                          placeholder="0 (Optional)"
+                          value={count90Above}
+                          onKeyDown={handlePositiveIntegerKeyDown}
+                          onPaste={(e) => handlePositiveIntegerPaste(e, setCount90Above)}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handlePositiveIntegerChange(e.target.value, setCount90Above)}
+                        />
+                      </div>
 
-                        const label90 = countItems[0]?.title || '90% and Above';
-                        const label80 = countItems[1]?.title || '80% to 90%';
-                        const label70 = countItems[2]?.title || '70% to 80%';
-                        const labelFail = failItem?.title || 'Fail';
-                        const labelPass = 'Class Pass Percentage %';
+                      {/* Field 2: count_80_90 */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ color: '#0284c7', fontWeight: 800, fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span>🔷 count_80_90</span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 500, color: '#0ea5e9' }}>80–90% (4 marks)</span>
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          className="input"
+                          placeholder="0 (Optional)"
+                          value={count80to90}
+                          onKeyDown={handlePositiveIntegerKeyDown}
+                          onPaste={(e) => handlePositiveIntegerPaste(e, setCount80to90)}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handlePositiveIntegerChange(e.target.value, setCount80to90)}
+                        />
+                      </div>
 
-                        return (
-                          <>
-                            <div className="form-group">
-                              <label className="form-label" style={{ color: '#4f46e5', fontWeight: 800, fontSize: '0.8rem' }}>
-                                ⭐ {label90}
-                              </label>
-                              <input
-                                type="number"
-                                className="input"
-                                min={0}
-                                placeholder="0"
-                                value={count90Above === 0 ? '' : count90Above}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => setCount90Above(Math.max(0, parseInt(e.target.value) || 0))}
-                                required
-                              />
+                      {/* Field 3: count_70_80 */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ color: '#059669', fontWeight: 800, fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span>🟢 count_70_80</span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 500, color: '#10b981' }}>70–80% (3 marks)</span>
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          className="input"
+                          placeholder="0 (Optional)"
+                          value={count70to80}
+                          onKeyDown={handlePositiveIntegerKeyDown}
+                          onPaste={(e) => handlePositiveIntegerPaste(e, setCount70to80)}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handlePositiveIntegerChange(e.target.value, setCount70to80)}
+                        />
+                      </div>
+
+                      {/* Field 4: count_fail */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ color: '#dc2626', fontWeight: 800, fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span>🔻 count_fail</span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 500, color: '#ef4444' }}>Fail (-1 penalty)</span>
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          className="input"
+                          placeholder="0 (Optional)"
+                          value={failCount}
+                          onKeyDown={handlePositiveIntegerKeyDown}
+                          onPaste={(e) => handlePositiveIntegerPaste(e, setFailCount)}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handlePositiveIntegerChange(e.target.value, setFailCount)}
+                        />
+                      </div>
+
+                      {/* Field 5: pass_percentage */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ color: '#7c3aed', fontWeight: 800, fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span>📈 pass_percentage</span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 500, color: '#8b5cf6' }}>Class Pass %</span>
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="input"
+                          placeholder="0.00 (Optional)"
+                          value={passPercentage}
+                          onKeyDown={handlePassPercentageKeyDown}
+                          onPaste={handlePassPercentagePaste}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handlePassPercentageChange(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Mark Formula Calculation Card */}
+                    <div style={{ background: '#ffffff', border: '1.5px solid #e0e7ff', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 2px 8px rgba(99, 102, 241, 0.05)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                        <div>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#4f46e5', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Mark Formula (Auto-marked)
+                          </span>
+                          <div style={{ fontFamily: 'monospace', fontSize: '0.88rem', fontWeight: 700, color: '#1e293b', marginTop: '2px' }}>
+                            Marks = (N<sub>≥90%</sub> × 5) + (N<sub>80-90%</sub> × 4) + (N<sub>70-80%</sub> × 3) + PassBonus − N<sub>Fail</sub>
+                          </div>
+                        </div>
+
+                        <div style={{ textAlign: 'right', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: '#ffffff', padding: '8px 18px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)' }}>
+                          <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.9, display: 'block', fontWeight: 600 }}>
+                            Estimated Score
+                          </span>
+                          <span style={{ fontSize: '1.45rem', fontWeight: 900, lineHeight: 1 }}>
+                            {computedAcademicMarks} <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>marks</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Live Calculation Steps */}
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 14px', fontSize: '0.82rem', color: '#334155', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                        <span>🧮 <strong>Live Breakdown:</strong></span>
+                        <span style={{ color: '#4f46e5', fontWeight: 700 }}>({num90} × 5 = {num90 * 5})</span>
+                        <span>+</span>
+                        <span style={{ color: '#0284c7', fontWeight: 700 }}>({num80} × 4 = {num80 * 4})</span>
+                        <span>+</span>
+                        <span style={{ color: '#059669', fontWeight: 700 }}>({num70} × 3 = {num70 * 3})</span>
+                        <span>+</span>
+                        <span style={{ color: '#7c3aed', fontWeight: 800 }}>PassBonus(+{academicPassBonus})</span>
+                        <span>−</span>
+                        <span style={{ color: '#dc2626', fontWeight: 700 }}>Fail({numFail})</span>
+                        <span>=</span>
+                        <strong style={{ color: '#4338ca', fontSize: '0.9rem' }}>{computedAcademicMarks} marks</strong>
+                      </div>
+
+                      {/* PassBonus Tiers Strip */}
+                      <div>
+                        <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#64748b', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                          PassBonus Tiers ({rawPassPct > 0 ? `Current: ${rawPassPct}%` : 'Enter pass_percentage to apply tier'}):
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '6px' }}>
+                          {[
+                            { range: '100–90.01%', bonus: 5, active: rawPassPct > 90.0 },
+                            { range: '90–80.01%', bonus: 4, active: rawPassPct > 80.0 && rawPassPct <= 90.0 },
+                            { range: '80–70.01%', bonus: 3, active: rawPassPct > 70.0 && rawPassPct <= 80.0 },
+                            { range: '70–60.01%', bonus: 2, active: rawPassPct > 60.0 && rawPassPct <= 70.0 },
+                            { range: '60–50.01%', bonus: 1, active: rawPassPct > 50.0 && rawPassPct <= 60.0 },
+                            { range: '< 50%', bonus: 0, active: rawPassPct <= 50.0 && rawPassPct > 0 }
+                          ].map((t) => (
+                            <div
+                              key={t.range}
+                              style={{
+                                padding: '6px 10px',
+                                borderRadius: '8px',
+                                fontSize: '0.74rem',
+                                textAlign: 'center',
+                                fontWeight: t.active ? 800 : 600,
+                                background: t.active ? 'linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%)' : '#f1f5f9',
+                                border: t.active ? '1.5px solid #8b5cf6' : '1px solid #e2e8f0',
+                                color: t.active ? '#5b21b6' : '#64748b',
+                                boxShadow: t.active ? '0 2px 6px rgba(139, 92, 246, 0.2)' : 'none',
+                                transition: 'all 0.2s ease'
+                              }}
+                            >
+                              <div>{t.range}</div>
+                              <div style={{ fontWeight: 800, color: t.active ? '#6d28d9' : '#475569' }}>
+                                +{t.bonus} {t.active && '✓'}
+                              </div>
                             </div>
+                          ))}
+                        </div>
+                      </div>
 
-                            <div className="form-group">
-                              <label className="form-label" style={{ color: '#0284c7', fontWeight: 800, fontSize: '0.8rem' }}>
-                                {label80}
-                              </label>
-                              <input
-                                type="number"
-                                className="input"
-                                min={0}
-                                placeholder="0"
-                                value={count80to90 === 0 ? '' : count80to90}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => setCount80to90(Math.max(0, parseInt(e.target.value) || 0))}
-                                required
-                              />
-                            </div>
-
-                            <div className="form-group">
-                              <label className="form-label" style={{ color: '#059669', fontWeight: 800, fontSize: '0.8rem' }}>
-                                {label70}
-                              </label>
-                              <input
-                                type="number"
-                                className="input"
-                                min={0}
-                                placeholder="0"
-                                value={count70to80 === 0 ? '' : count70to80}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => setCount70to80(Math.max(0, parseInt(e.target.value) || 0))}
-                                required
-                              />
-                            </div>
-
-                            <div className="form-group">
-                              <label className="form-label" style={{ color: '#0d9488', fontWeight: 800, fontSize: '0.8rem' }}>
-                                Other Pass (40%–70% / B, C, D)
-                              </label>
-                              <input
-                                type="number"
-                                className="input"
-                                min={0}
-                                placeholder="0"
-                                value={countOtherPass === 0 ? '' : countOtherPass}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => setCountOtherPass(Math.max(0, parseInt(e.target.value) || 0))}
-                                required
-                              />
-                            </div>
-
-                            <div className="form-group">
-                              <label className="form-label" style={{ color: '#dc2626', fontWeight: 800, fontSize: '0.8rem' }}>
-                                {labelFail}
-                              </label>
-                              <input
-                                type="number"
-                                className="input"
-                                min={0}
-                                placeholder="0"
-                                value={failCount === 0 ? '' : failCount}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => setFailCount(Math.max(0, parseInt(e.target.value) || 0))}
-                                required
-                              />
-                            </div>
-
-                            <div className="form-group">
-                              <label className="form-label" style={{ color: '#7c3aed', fontWeight: 800, fontSize: '0.8rem' }}>
-                                {labelPass}
-                              </label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                className="input"
-                                min={0}
-                                max={100}
-                                placeholder="0.00"
-                                value={passPercentage === 0 ? '' : passPercentage}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => setPassPercentage(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-                                required
-                              />
-                            </div>
-
-                            <div style={{ gridColumn: '1 / -1', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                              <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>
-                                👥 Total Accounted: <strong style={{ color: '#0f172a' }}>{count90Above + count80to90 + count70to80 + countOtherPass + failCount}</strong> students
-                              </span>
-                              <span style={{ fontSize: '0.82rem', color: '#059669', fontWeight: 600 }}>
-                                ✅ Passed: <strong style={{ color: '#059669' }}>{count90Above + count80to90 + count70to80 + countOtherPass}</strong>
-                              </span>
-                              <span style={{ fontSize: '0.82rem', color: '#dc2626', fontWeight: 600 }}>
-                                ❌ Failed: <strong style={{ color: '#dc2626' }}>{failCount}</strong>
-                              </span>
-                              <span style={{ fontSize: '0.82rem', color: '#7c3aed', fontWeight: 700 }}>
-                                Calculated Pass: {(count90Above + count80to90 + count70to80 + countOtherPass + failCount) > 0 ? (((count90Above + count80to90 + count70to80 + countOtherPass) / (count90Above + count80to90 + count70to80 + countOtherPass + failCount)) * 100).toFixed(2) : '0'}%
-                              </span>
-                            </div>
-                          </>
-                        );
-                      })()}
+                      {/* Notice */}
+                      <div style={{ fontSize: '0.76rem', color: '#64748b', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', borderLeft: '3px solid #6366f1' }}>
+                        💡 <strong>Note:</strong> All grade count and percentage fields above are <em>optional</em>. Only the Google Drive proof document link below is mandatory.
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -2490,11 +2701,15 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                       const isRepCorrection = ['Correction Requested', 'Correction'].includes(sub.status) && (!!sub.repRemarks || (!!sub.repVerifiedByName && !sub.teacherVerifiedByName) || (!!sub.remarks && !sub.teacherRemarks && !sub.teacherVerifiedByName));
                       const isRepRejected = sub.status === 'Rejected' && (!!sub.repRemarks || (!!sub.repVerifiedByName && !sub.teacherVerifiedByName) || (!!sub.remarks && !sub.teacherRemarks && !sub.teacherVerifiedByName));
 
-                      const isTeacherApproved = ['Teacher Verified', 'TEACHER_VERIFIED', 'EVALUATOR_PENDING', 'Approved', 'Verified', 'Evaluated', 'Locked'].includes(sub.status) || (!!sub.teacherVerifiedByName && sub.status !== 'Rejected' && !['Correction Requested', 'Correction'].includes(sub.status));
-                      const isTeacherCorrection = (['Correction Requested', 'Correction'].includes(sub.status) && !isRepCorrection) || (!!sub.teacherRemarks && ['Correction Requested', 'Correction'].includes(sub.status));
-                      const isTeacherRejected = (sub.status === 'Rejected' && !isRepRejected) || (!!sub.teacherRemarks && sub.status === 'Rejected');
+                      const isEvaluatorCorrection = ['Correction Requested', 'Correction'].includes(sub.status) && (!!sub.evaluatorRemarks || (!!sub.evaluatorVerifiedByName && !sub.teacherRemarks));
+                      const isEvaluatorRejected = sub.status === 'Rejected' && (!!sub.evaluatorRemarks || (!!sub.evaluatorVerifiedByName && !sub.teacherRemarks));
 
-                      const isEvaluated = sub.evaluatorVerified || sub.status === 'Evaluated' || sub.status === 'Locked' || (sub.marks !== null && sub.marks !== undefined);
+                      const isTeacherCorrection = !isEvaluatorCorrection && ((['Correction Requested', 'Correction'].includes(sub.status) && !isRepCorrection) || (!!sub.teacherRemarks && ['Correction Requested', 'Correction'].includes(sub.status)));
+                      const isTeacherRejected = !isEvaluatorRejected && ((sub.status === 'Rejected' && !isRepRejected) || (!!sub.teacherRemarks && sub.status === 'Rejected'));
+
+                      const isTeacherApproved = ['Teacher Verified', 'TEACHER_VERIFIED', 'EVALUATOR_PENDING', 'Approved', 'Verified', 'Evaluated', 'Locked'].includes(sub.status) || (!!sub.teacherVerifiedByName && !isTeacherRejected && !isTeacherCorrection) || isEvaluatorCorrection || isEvaluatorRejected;
+
+                      const isEvaluated = sub.evaluatorVerified || sub.status === 'Evaluated' || sub.status === 'Locked' || (sub.marks !== null && sub.marks !== undefined && Number(sub.marks) > 0);
 
                       return (
                         <tr key={sub.id}>
@@ -2510,23 +2725,13 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                           </td>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {sub.grade_breakdown ? (
-                                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                                  <span style={{ color: '#4f46e5' }}>≥90%: {sub.grade_breakdown.s_grade_count}</span> |
-                                  <span style={{ color: '#0284c7' }}>80-90%: {sub.grade_breakdown.a_plus_grade_count}</span> |
-                                  <span style={{ color: '#059669' }}>70-80%: {sub.grade_breakdown.a_grade_count}</span> |
-                                  <span style={{ color: '#0d9488' }}>Other Pass: {sub.grade_breakdown.other_pass_count}</span> |
-                                  <span style={{ color: '#dc2626' }}>Fail: {sub.grade_breakdown.failed_count}</span> |
-                                  <span style={{ color: '#7c3aed' }}>Pass: {sub.grade_breakdown.class_pass_percentage !== undefined ? `${sub.grade_breakdown.class_pass_percentage}%` : '-'}</span>
-                                </div>
-                              ) : sub.evidence?.type === 'academic_marks' || sub.evidence?.type === 'academic_grades' || sub.evidence?.markBreakdown || sub.evidence?.grades ? (
-                                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                                  <span style={{ color: '#4f46e5' }}>≥90%: {sub.evidence.markBreakdown?.count90Above ?? sub.evidence.grades?.S ?? 0}</span> |
-                                  <span style={{ color: '#0284c7' }}>80-90%: {sub.evidence.markBreakdown?.count80to90 ?? sub.evidence.grades?.APlus ?? 0}</span> |
-                                  <span style={{ color: '#059669' }}>70-80%: {sub.evidence.markBreakdown?.count70to80 ?? sub.evidence.grades?.A ?? 0}</span> |
-                                  <span style={{ color: '#0d9488' }}>Other Pass: {sub.evidence.markBreakdown?.countOtherPass ?? sub.evidence.grades?.OtherPass ?? 0}</span> |
-                                  <span style={{ color: '#dc2626' }}>Fail: {sub.evidence.markBreakdown?.failCount ?? sub.evidence.grades?.Fail ?? 0}</span> |
-                                  <span style={{ color: '#7c3aed' }}>Pass: {sub.evidence.classPassPercentage !== undefined ? `${sub.evidence.classPassPercentage}%` : '-'}</span>
+                              {sub.grade_breakdown || (sub.evidence?.type === 'academic_marks' || sub.evidence?.type === 'academic_grades' || sub.evidence?.markBreakdown || sub.evidence?.grades) ? (
+                                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                  <span style={{ color: '#4f46e5' }}>≥90%: {sub.grade_breakdown?.count_90_above ?? sub.grade_breakdown?.s_grade_count ?? sub.evidence?.count_90_above ?? sub.evidence?.markBreakdown?.count90Above ?? sub.evidence?.grades?.S ?? 0}</span> |
+                                  <span style={{ color: '#0284c7' }}>80-90%: {sub.grade_breakdown?.count_80_90 ?? sub.grade_breakdown?.a_plus_grade_count ?? sub.evidence?.count_80_90 ?? sub.evidence?.markBreakdown?.count80to90 ?? sub.evidence?.grades?.APlus ?? 0}</span> |
+                                  <span style={{ color: '#059669' }}>70-80%: {sub.grade_breakdown?.count_70_80 ?? sub.grade_breakdown?.a_grade_count ?? sub.evidence?.count_70_80 ?? sub.evidence?.markBreakdown?.count70to80 ?? sub.evidence?.grades?.A ?? 0}</span> |
+                                  <span style={{ color: '#dc2626' }}>Fail: {sub.grade_breakdown?.count_fail ?? sub.grade_breakdown?.failed_count ?? sub.evidence?.count_fail ?? sub.evidence?.markBreakdown?.failCount ?? sub.evidence?.grades?.Fail ?? 0}</span> |
+                                  <span style={{ color: '#7c3aed' }}>Pass: {sub.grade_breakdown?.pass_percentage ?? sub.grade_breakdown?.class_pass_percentage ?? sub.evidence?.pass_percentage ?? sub.evidence?.classPassPercentage ?? '-'}%</span>
                                 </div>
                               ) : sub.evidence?.type === 'startup_details' || sub.evidence?.startupName ? (
                                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#be185d', display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -2706,6 +2911,38 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                                 {sub.evaluatorVerifiedByName && (
                                   <div style={{ fontSize: '0.74rem', color: '#047857', fontWeight: 700 }}>
                                     by {sub.evaluatorVerifiedByName}
+                                  </div>
+                                )}
+                              </div>
+                            ) : isEvaluatorCorrection ? (
+                              <div>
+                                <span className="badge badge-correction" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 800 }}>
+                                  ⚠️ Correction Req.
+                                </span>
+                                {sub.evaluatorVerifiedByName && (
+                                  <div style={{ fontSize: '0.74rem', color: '#b45309', fontWeight: 700, marginTop: '2px' }}>
+                                    by {sub.evaluatorVerifiedByName}
+                                  </div>
+                                )}
+                                {(sub.evaluatorRemarks || sub.remarks) && (
+                                  <div style={{ fontSize: '0.72rem', color: '#b45309', fontStyle: 'italic', marginTop: '2px' }}>
+                                    💬 &ldquo;{sub.evaluatorRemarks || sub.remarks}&rdquo;
+                                  </div>
+                                )}
+                              </div>
+                            ) : isEvaluatorRejected ? (
+                              <div>
+                                <span className="badge badge-correction" style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', fontWeight: 800 }}>
+                                  ❌ Rejected
+                                </span>
+                                {sub.evaluatorVerifiedByName && (
+                                  <div style={{ fontSize: '0.74rem', color: '#dc2626', fontWeight: 700, marginTop: '2px' }}>
+                                    by {sub.evaluatorVerifiedByName}
+                                  </div>
+                                )}
+                                {(sub.evaluatorRemarks || sub.remarks) && (
+                                  <div style={{ fontSize: '0.72rem', color: '#dc2626', fontStyle: 'italic', marginTop: '2px' }}>
+                                    💬 &ldquo;{sub.evaluatorRemarks || sub.remarks}&rdquo;
                                   </div>
                                 )}
                               </div>
