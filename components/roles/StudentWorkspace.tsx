@@ -395,6 +395,21 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     }
   }, [availableCriteriaCatalog, selectedCategory]);
 
+  // Sync selectedCriteriaId if current selection is not available in category items
+  React.useEffect(() => {
+    if (availableCategoryItems && availableCategoryItems.length > 0) {
+      const hasItem = availableCategoryItems.some((i) => i.id === selectedCriteriaId);
+      if (!hasItem) {
+        const itemByTitle = availableCategoryItems.find((i) => matchItem(i, selectedCriteriaId));
+        if (itemByTitle) {
+          setSelectedCriteriaId(itemByTitle.id);
+        } else {
+          setSelectedCriteriaId(availableCategoryItems[0].id);
+        }
+      }
+    }
+  }, [availableCategoryItems, selectedCriteriaId]);
+
   // Pre-select category and item when navigating from dashboard or via URL query parameters
   React.useEffect(() => {
     if (activeTab === 'submit' && typeof window !== 'undefined') {
@@ -475,9 +490,26 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
     if (editingSubId) {
       const sub = submissions.find((s) => s.id === editingSubId);
       if (sub) {
-        const cat = availableCriteriaCatalog.find((c) => c.items.some((i) => i.id === sub.criteriaId));
-        if (cat) setSelectedCategory(cat.id);
-        setSelectedCriteriaId(sub.criteriaId);
+        let cat = availableCriteriaCatalog.find((c) => c.items.some((i) => i.id === sub.criteriaId));
+        if (!cat && sub.categoryId) {
+          cat = availableCriteriaCatalog.find((c) => matchCategory(c, sub.categoryId));
+        }
+        if (!cat && sub.description) {
+          cat = availableCriteriaCatalog.find((c) =>
+            c.items.some((i) => sub.description.toLowerCase().includes(i.title.toLowerCase()))
+          );
+        }
+        if (cat) {
+          setSelectedCategory(cat.id || cat.code || cat.category);
+          const matchedItem = cat.items.find((i) => i.id === sub.criteriaId) ||
+                              cat.items.find((i) => sub.description && sub.description.toLowerCase().includes(i.title.toLowerCase())) ||
+                              cat.items[0];
+          if (matchedItem) {
+            setSelectedCriteriaId(matchedItem.id);
+          }
+        } else {
+          setSelectedCriteriaId(sub.criteriaId);
+        }
         setDescription(sub.description);
         if (sub.startDate) setStartDate(sub.startDate);
         else if (sub.evidence?.startDate) setStartDate(sub.evidence.startDate);
@@ -935,7 +967,7 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
       repStatusFilter === 'all' ||
       (repStatusFilter === 'pending' && (sub.status === 'Pending Rep Verification' || sub.status === 'Pending' || sub.status === 'Submitted' || sub.status === 'Pending Verification')) ||
       (repStatusFilter === 'verified' && (sub.status === 'Student Rep Verified' || sub.status === 'Verified by Student Rep')) ||
-      (repStatusFilter === 'approved' && (sub.status === 'Approved' || sub.status === 'Verified' || sub.status === 'Evaluated' || sub.status === 'Locked')) ||
+      (repStatusFilter === 'approved' && (['Teacher Verified', 'Approved', 'Verified', 'Evaluated', 'Locked', 'TEACHER_VERIFIED', 'EVALUATOR_PENDING'].includes(sub.status))) ||
       (repStatusFilter === 'correction' && (sub.status === 'Correction Requested' || sub.status === 'Correction')) ||
       (repStatusFilter === 'rejected' && sub.status === 'Rejected');
 
@@ -2454,13 +2486,13 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                       const isEventId = sub.eventId || sub.proof?.startsWith('Event ID:');
                       const displayEventId = sub.eventId || (sub.proof?.startsWith('Event ID:') ? sub.proof.replace('Event ID: ', '') : sub.proof);
 
-                      const isRepApproved = sub.status === 'Student Rep Verified' || ['Approved', 'Verified', 'Evaluated', 'Locked'].includes(sub.status) || (sub.repVerifiedByName && !['Correction Requested', 'Correction', 'Rejected'].includes(sub.status));
+                      const isRepApproved = ['Student Rep Verified', 'Teacher Verified', 'Approved', 'Verified', 'Evaluated', 'Locked', 'EVALUATOR_PENDING', 'TEACHER_VERIFIED'].includes(sub.status) || (!!sub.repVerifiedByName && !['Correction Requested', 'Correction', 'Rejected'].includes(sub.status));
                       const isRepCorrection = ['Correction Requested', 'Correction'].includes(sub.status) && (!!sub.repRemarks || (!!sub.repVerifiedByName && !sub.teacherVerifiedByName) || (!!sub.remarks && !sub.teacherRemarks && !sub.teacherVerifiedByName));
                       const isRepRejected = sub.status === 'Rejected' && (!!sub.repRemarks || (!!sub.repVerifiedByName && !sub.teacherVerifiedByName) || (!!sub.remarks && !sub.teacherRemarks && !sub.teacherVerifiedByName));
 
-                      const isTeacherApproved = ['Approved', 'Verified', 'Evaluated', 'Locked'].includes(sub.status);
-                      const isTeacherCorrection = ['Correction Requested', 'Correction'].includes(sub.status) && !isRepCorrection;
-                      const isTeacherRejected = sub.status === 'Rejected' && !isRepRejected;
+                      const isTeacherApproved = ['Teacher Verified', 'TEACHER_VERIFIED', 'EVALUATOR_PENDING', 'Approved', 'Verified', 'Evaluated', 'Locked'].includes(sub.status) || (!!sub.teacherVerifiedByName && sub.status !== 'Rejected' && !['Correction Requested', 'Correction'].includes(sub.status));
+                      const isTeacherCorrection = (['Correction Requested', 'Correction'].includes(sub.status) && !isRepCorrection) || (!!sub.teacherRemarks && ['Correction Requested', 'Correction'].includes(sub.status));
+                      const isTeacherRejected = (sub.status === 'Rejected' && !isRepRejected) || (!!sub.teacherRemarks && sub.status === 'Rejected');
 
                       const isEvaluated = sub.evaluatorVerified || sub.status === 'Evaluated' || sub.status === 'Locked' || (sub.marks !== null && sub.marks !== undefined);
 
@@ -2899,11 +2931,11 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                             {sub.verifiedByName && (
                               <div style={{
                                 fontSize: '0.78rem',
-                                color: ['Approved', 'Verified', 'Student Rep Verified', 'Evaluated', 'Locked'].includes(sub.status) ? '#16a34a' : sub.status === 'Rejected' ? '#dc2626' : '#ea580c',
+                                color: ['Approved', 'Verified', 'Teacher Verified', 'Student Rep Verified', 'Evaluated', 'Locked'].includes(sub.status) ? '#16a34a' : sub.status === 'Rejected' ? '#dc2626' : '#ea580c',
                                 fontWeight: 700,
                                 marginTop: '4px'
                               }}>
-                                👤 {['Approved', 'Verified', 'Student Rep Verified', 'Evaluated', 'Locked'].includes(sub.status) ? 'Verified' : sub.status === 'Rejected' ? 'Rejected' : 'Reviewed'} by {sub.verifiedByName}
+                                👤 {['Approved', 'Verified', 'Teacher Verified', 'Student Rep Verified', 'Evaluated', 'Locked'].includes(sub.status) ? 'Verified' : sub.status === 'Rejected' ? 'Rejected' : 'Reviewed'} by {sub.verifiedByName}
                               </div>
                             )}
                             {sub.remarks && (
@@ -3010,8 +3042,8 @@ export const StudentWorkspace: React.FC<StudentWorkspaceProps> = ({ view }) => {
                               </div>
                             ) : (
                               <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                                <span className="muted" style={{ color: ['Approved', 'Verified', 'Evaluated', 'Locked'].includes(sub.status) ? '#16a34a' : '#1e40af' }}>
-                                  {sub.status === 'Student Rep Verified' ? '✓ Forwarded to Teacher' : sub.status}
+                                <span className="muted" style={{ color: ['Approved', 'Verified', 'Teacher Verified', 'Evaluated', 'Locked'].includes(sub.status) ? '#16a34a' : '#1e40af' }}>
+                                  {sub.status === 'Student Rep Verified' ? '✓ Forwarded to Teacher' : sub.status === 'Teacher Verified' ? '✓ Forwarded to Evaluator' : sub.status}
                                 </span>
                               </div>
                             )}

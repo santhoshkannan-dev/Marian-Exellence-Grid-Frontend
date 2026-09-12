@@ -125,7 +125,7 @@ export interface Submission {
   startDate?: string;
   endDate?: string;
   description: string;
-  status: 'Approved' | 'Pending' | 'Pending Verification' | 'Pending Rep Verification' | 'Student Rep Verified' | 'Verified by Student Rep' | 'Teacher Verified' | 'Correction Requested' | 'Rejected' | 'Draft' | 'Submitted' | 'Verified' | 'Evaluated' | 'Locked' | 'Correction';
+  status: 'Approved' | 'Pending' | 'Pending Verification' | 'Pending Rep Verification' | 'Student Rep Verified' | 'Verified by Student Rep' | 'Teacher Verified' | 'TEACHER_VERIFIED' | 'EVALUATOR_PENDING' | 'DQC_PENDING' | 'Correction Requested' | 'Rejected' | 'Draft' | 'Submitted' | 'Verified' | 'Evaluated' | 'Locked' | 'Correction' | (string & {});
   remarks?: string;
   marks?: number | null;
   proof?: string;
@@ -146,6 +146,8 @@ export interface Submission {
   user_name?: string;
   className?: string;
   class_name?: string;
+  department?: string;
+  department_name?: string;
   repVerifiedByName?: string;
   repRemarks?: string;
   teacherVerifiedByName?: string;

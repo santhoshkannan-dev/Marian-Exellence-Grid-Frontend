@@ -135,6 +135,7 @@ export const CriteriaProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (typeof window === 'undefined') return;
     const handleAuthChange = () => {
+      fetchCriteriaCatalog();
       fetchClasses();
       fetchDepartments();
       fetchCourses();

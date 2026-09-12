@@ -34,29 +34,55 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
 
   // Helper to check if submission belongs to a category assigned to the current evaluator
   const isAssignedToEvaluator = (s: any) => {
-    const category = criteriaCatalog.find((cat) => cat.items.some(item => String(item.id) === String(s.criteriaId)));
+    const userRole = (currentUserInfo?.role || '').toLowerCase();
+    if (userRole === 'admin' || currentUserInfo?.available_roles?.includes('admin')) {
+      return true;
+    }
+
+    const category = criteriaCatalog.find((cat) => {
+      const matchCriteria = cat.items?.some(item => String(item.id) === String(s.criteriaId));
+      const matchCategory = s.categoryId && (String(cat.id) === String(s.categoryId) || cat.code === s.categoryId);
+      return matchCriteria || matchCategory;
+    });
     if (!category) return false;
+
     const assignedEvaluators = category.evaluators || [];
     const userEmail = currentUserInfo?.email?.toLowerCase().trim();
     if (assignedEvaluators.length === 0) return false; // If no evaluators assigned, no one evaluates it here
-    return userEmail && assignedEvaluators.some(e => e.toLowerCase() === userEmail);
+    return Boolean(userEmail && assignedEvaluators.some(e => (e || '').toLowerCase().trim() === userEmail));
   };
 
   const getStudentDept = (student: any, sub?: any) => {
+    if (sub?.department || sub?.department_name) return sub.department || sub.department_name;
     if (student?.department) return student.department;
     const className = student?.className || sub?.class_name || sub?.className;
     if (className && classes?.length) {
       const classObj = classes.find((c: any) => c.name === className);
-      if (classObj?.department) return classObj.department;
+      if (classObj?.department) {
+        return typeof classObj.department === 'string' ? classObj.department : classObj.department?.name;
+      }
     }
-    return 'Unknown';
+    return 'General';
   };
 
   // Submissions forwarded from Class Teacher (Round 2) awaiting Evaluator Verification (Round 3)
   const teacherApprovedSubmissions = submissions.filter((s) => {
-    const isValidStatus = ['Teacher Verified', 'Approved', 'Verified'].includes(s.status) && !s.evaluatorVerified && s.status !== 'Locked' && s.status !== 'Evaluated';
-    const isVerifiedByBoth = !!s.repVerifiedByName && (!!s.teacherVerifiedByName || !!s.verifiedByName);
-    return isValidStatus && isVerifiedByBoth && isAssignedToEvaluator(s);
+    const isValidStatus = [
+      'Teacher Verified',
+      'TEACHER_VERIFIED',
+      'EVALUATOR_PENDING',
+      'Approved',
+      'Verified'
+    ].includes(s.status) && !s.evaluatorVerified && s.status !== 'Locked' && s.status !== 'Evaluated';
+
+    const isTeacherVerified = (
+      s.status === 'Teacher Verified' ||
+      s.status === 'TEACHER_VERIFIED' ||
+      s.status === 'EVALUATOR_PENDING' ||
+      !!s.teacherVerifiedByName
+    );
+
+    return isValidStatus && isTeacherVerified && isAssignedToEvaluator(s);
   });
 
   const handleVerifySubmissionEvaluator = (subId: number) => {
@@ -294,7 +320,10 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
     return filtered.reduce((prev, current) => (prev.score > current.score) ? prev : current);
   };
 
-  const allDepts = Array.from(new Set(students.map(s => getStudentDept(s)).filter(d => d && d !== 'Unknown')));
+  const allDepts = Array.from(new Set([
+    ...students.map(s => getStudentDept(s)),
+    ...submissions.map(s => getStudentDept(students.find(st => st.id === s.studentId), s))
+  ].filter(d => d && d !== 'Unknown')));
   const deptStats = allDepts.map(deptName => {
      const deptPending = teacherApprovedSubmissions.filter(s => {
          const student = students.find(st => st.id === s.studentId);
@@ -782,13 +811,12 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
               className="select"
               value={selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}
-              style={{ width: '200px' }}
+              style={{ width: '220px' }}
             >
               <option value="All Departments">All Departments</option>
-              <option value="Business Administration">Business Administration</option>
-              <option value="Commerce">Commerce</option>
-              <option value="Computer Science">Computer Science</option>
-              <option value="English">English</option>
+              {allDepts.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
             </select>
 
             {/* CLASS DROPDOWN */}
@@ -799,9 +827,9 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
               style={{ width: '180px' }}
             >
               <option value="All Classes">All Classes</option>
-              <option value="BCom A">BCom A</option>
-              <option value="BSc CS A">BSc CS A</option>
-              <option value="BA English A">BA English A</option>
+              {classes?.map((c: any) => (
+                <option key={c.id || c.name} value={c.name}>{c.name}</option>
+              ))}
             </select>
           </div>
 
@@ -855,7 +883,14 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
                           {(activeTab === 'pending' ? teacherApprovedSubmissions : verifiedSubmissions)
                             .filter(sub => {
                                const studentObj = students.find((s) => s.id === sub.studentId);
-                               return getStudentDept(studentObj, sub) === dept.name;
+                               const matchesDept = getStudentDept(studentObj, sub) === dept.name;
+                               const matchesClass = selectedClass === 'All Classes' || (studentObj?.className === selectedClass || sub.className === selectedClass);
+                               const matchesSearch = !searchQuery || (
+                                 (studentObj?.name && studentObj.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                                 (sub.description && sub.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                                 (sub.user_name && sub.user_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                               );
+                               return matchesDept && matchesClass && matchesSearch;
                             })
                             .map((sub) => {
                             const studentObj = students.find((s) => s.id === sub.studentId);
@@ -913,7 +948,14 @@ export const EvaluatorWorkspace: React.FC<EvaluatorWorkspaceProps> = ({ view = '
 
                           {(activeTab === 'pending' ? teacherApprovedSubmissions : verifiedSubmissions).filter(sub => {
                                const studentObj = students.find((s) => s.id === sub.studentId);
-                               return getStudentDept(studentObj, sub) === dept.name;
+                               const matchesDept = getStudentDept(studentObj, sub) === dept.name;
+                               const matchesClass = selectedClass === 'All Classes' || (studentObj?.className === selectedClass || sub.className === selectedClass);
+                               const matchesSearch = !searchQuery || (
+                                 (studentObj?.name && studentObj.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                                 (sub.description && sub.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                                 (sub.user_name && sub.user_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                               );
+                               return matchesDept && matchesClass && matchesSearch;
                           }).length === 0 && (
                             <p className="muted" style={{ fontSize: '0.84rem', margin: 0, textAlign: 'center' }}>No {activeTab} verification files for this department.</p>
                           )}

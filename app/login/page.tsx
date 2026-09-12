@@ -192,6 +192,8 @@ export default function LoginPage() {
                     <option value="kochumol.abraham@mariancollege.org">Class Teacher / Faculty (Kochumol Abraham)</option>
                     <option value="allen.george@mariancollege.org">Evaluator (Allen George)</option>
                     <option value="admin@mariancollege.org">Institutional Admin (admin@mariancollege.org)</option>
+                    <option value="prijil.mathew@mariancollege.org">Admin (Prijil Mathew - prijil.mathew@mariancollege.org)</option>
+                    <option value="juby.george@mariancollege.org">Admin (Juby George - juby.george@mariancollege.org)</option>
                   </select>
                 </div>
               </div>

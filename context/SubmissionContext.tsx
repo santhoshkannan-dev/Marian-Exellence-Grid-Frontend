@@ -62,6 +62,8 @@ export const normalizeSubmission = (raw: any): Submission => {
     user_email: raw.user_email ?? '',
     user_name: raw.user_name ?? '',
     className: raw.className ?? raw.class_name ?? '',
+    department: raw.department_name ?? raw.department ?? '',
+    department_name: raw.department_name ?? raw.department ?? '',
     repVerifiedByName,
     repRemarks,
     teacherVerifiedByName,
