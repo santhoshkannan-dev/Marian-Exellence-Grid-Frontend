@@ -56,7 +56,6 @@ export interface AppContextType {
   hasDualRole: boolean;
   availableRoles: string[];
   switchRole: (role: 'teacher' | 'evaluator') => void;
-  setRole: (role: string) => void;
   setActivePage: (page: string) => void;
   setAcademicYear: (year: string) => void;
   fetchSubmissions: () => Promise<void>;
@@ -77,9 +76,7 @@ export interface AppContextType {
   submissionWindowStart: string;
   submissionWindowEnd: string;
   setSubmissionWindow: (start: string, end: string) => void;
-  loginAsRole: (role: string) => void;
   loginWithGoogleToken: (idToken: string) => Promise<{ success: boolean; error?: string }>;
-  loginBypass: (email: string, role?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   addStudent: (student: Omit<Student, 'id'>) => void;
   deleteStudent: (id: number) => void;
@@ -87,7 +84,6 @@ export interface AppContextType {
   deleteUserGroup: (groupId: string) => void;
   isStudentRep: boolean;
   isDqcMember: boolean;
-  toggleStudentRepMode: () => void;
   addUserToGroup: (groupId: string, email: string) => boolean;
   removeUserFromGroup: (groupId: string, email: string) => void;
   updateUserProfile: (name: string, className: string) => Promise<{ success: boolean; error?: string }>;
@@ -511,13 +507,9 @@ const AppProviderInner: React.FC<{ children: React.ReactNode }> = ({ children })
       hasDualRole: auth.hasDualRole,
       availableRoles: auth.availableRoles,
       switchRole: auth.switchRole,
-      setRole: auth.setRole,
-      loginAsRole: auth.loginAsRole,
       loginWithGoogleToken: auth.loginWithGoogleToken,
-      loginBypass: auth.loginBypass,
       logout: auth.logout,
       updateUserProfile: auth.updateUserProfile,
-      toggleStudentRepMode: auth.toggleStudentRepMode,
 
       // Navigation & Settings slice
       activePage,

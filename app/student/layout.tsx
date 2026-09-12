@@ -9,16 +9,23 @@ import { LoadingScreen } from '@/components/loading';
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loggedIn, logout, selectedAcademicYear, isStudentRep, currentUserInfo, isInitialized } = useApp();
+  const { loggedIn, logout, selectedAcademicYear, isStudentRep, currentUserInfo, currentRole, isInitialized } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated or unauthorized role
   React.useEffect(() => {
-    if (isInitialized && !loggedIn) {
-      router.push('/login');
+    if (isInitialized) {
+      if (!loggedIn) {
+        router.push('/login');
+      } else if (currentRole && currentRole !== 'student' && currentRole !== 'admin') {
+        const dest = (currentRole === 'teacher' || currentRole === 'faculty')
+          ? '/teacher/dashboard'
+          : '/evaluator/dashboard';
+        router.push(dest);
+      }
     }
-  }, [loggedIn, isInitialized, router]);
+  }, [loggedIn, currentRole, isInitialized, router]);
 
   if (!isInitialized) {
     return (
@@ -29,11 +36,11 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  if (!loggedIn) {
+  if (!loggedIn || (currentRole && currentRole !== 'student' && currentRole !== 'admin')) {
     return (
       <LoadingScreen
-        message="Redirecting to login portal..."
-        subtitle="Please authenticate to access the student portal"
+        message="Redirecting to authorized portal..."
+        subtitle="Validating student access permissions"
       />
     );
   }

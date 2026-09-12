@@ -3,12 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { LoadingButton, ExcellenceLoader } from '@/components/loading';
+import { ExcellenceLoader } from '@/components/loading';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loggedIn, currentRole, loginWithGoogleToken, loginBypass } = useApp();
-  const [selectedBypassEmail, setSelectedBypassEmail] = useState('');
+  const { loggedIn, currentRole, loginWithGoogleToken } = useApp();
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -79,40 +78,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleBypassLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedBypassEmail) {
-      setErrorMsg('Please select a profile to bypass authentication.');
-      return;
-    }
-
-    let emailToUse = selectedBypassEmail;
-    let overrideRole = undefined;
-    if (selectedBypassEmail.startsWith('{')) {
-      try {
-        const parsed = JSON.parse(selectedBypassEmail);
-        emailToUse = parsed.email;
-        overrideRole = parsed.role;
-      } catch (e) {
-        // Fallback to raw string
-      }
-    }
-
-    setErrorMsg('');
-    setLoading(true);
-    const result = await loginBypass(emailToUse, overrideRole);
-    setLoading(false);
-    if (result.success) {
-      const targetRole = ((result as any).user?.role || overrideRole || 'student').toLowerCase();
-      if (targetRole === 'student') router.push('/student/dashboard');
-      else if (targetRole === 'teacher' || targetRole === 'faculty') router.push('/teacher/dashboard');
-      else if (targetRole === 'admin') router.push('/admin/academic-years');
-      else if (targetRole === 'evaluator' || targetRole === 'evaluation') router.push('/evaluator/dashboard');
-    } else {
-      setErrorMsg(result.error || 'Bypass authentication failed.');
-    }
-  };
-
   return (
     <div className="login-page-container">
       <main className="login-layout">
@@ -163,55 +128,6 @@ export default function LoginPage() {
                 Only accounts ending with <strong>@mariancollege.org</strong> are authorized.
               </p>
             </div>
-
-            {/* Divider for Bypass Mode */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', marginBottom: '24px' }}>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.08)' }} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Development Bypass</span>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.08)' }} />
-            </div>
-
-            {/* Bypass Form */}
-            <form onSubmit={handleBypassLogin}>
-              <div className="form-group" style={{ marginBottom: '20px' }}>
-                <label htmlFor="bypass-email-select">SELECT ROLE</label>
-                <div className="select-wrapper">
-                  <select
-                    id="bypass-email-select"
-                    value={selectedBypassEmail}
-                    onChange={(e) => {
-                      setSelectedBypassEmail(e.target.value);
-                      setErrorMsg('');
-                    }}
-                    required
-                  >
-                    <option value="" disabled>Select your role</option>
-                    <option value="santhosh.25pmc152@mariancollege.org">Student/DQC Rep (santhosh.25pmc152 - II MCA)</option>
-                    <option value="amal.25pmc114@mariancollege.org">PG Student (amal.25pmc114 - II MCA)</option>
-                    <option value="santhosh.25ubc154@mariancollege.org">UG Student (santhosh.25ubc154 - II BCA A)</option>
-                    <option value="kochumol.abraham@mariancollege.org">Class Teacher / Faculty (Kochumol Abraham)</option>
-                    <option value="allen.george@mariancollege.org">Evaluator (Allen George)</option>
-                    <option value="admin@mariancollege.org">Institutional Admin (admin@mariancollege.org)</option>
-                    <option value="prijil.mathew@mariancollege.org">Admin (Prijil Mathew - prijil.mathew@mariancollege.org)</option>
-                    <option value="juby.george@mariancollege.org">Admin (Juby George - juby.george@mariancollege.org)</option>
-                  </select>
-                </div>
-              </div>
-
-              <LoadingButton
-                type="submit"
-                className="btn-continue"
-                loading={loading}
-                loadingText="Signing in..."
-                style={{ width: '100%', height: '48px', justifyContent: 'center' }}
-              >
-                <span>Bypass & Log In</span>
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                  <polyline points="12 5 19 12 12 19" />
-                </svg>
-              </LoadingButton>
-            </form>
 
             <div className="card-accent" style={{ marginTop: '24px' }}>
               <span className="accent-line"></span>

@@ -168,14 +168,10 @@ export interface AuthContextType {
   isDqcMember: boolean;
   hasDualRole: boolean;
   availableRoles: string[];
-  setRole: (role: string) => void;
   switchRole: (role: 'teacher' | 'evaluator') => void;
-  loginAsRole: (role: string) => void;
   loginWithGoogleToken: (idToken: string) => Promise<{ success: boolean; error?: string; user?: any }>;
-  loginBypass: (email: string, role?: string) => Promise<{ success: boolean; error?: string; user?: any }>;
   logout: () => Promise<void>;
   updateUserProfile: (name: string, className: string) => Promise<{ success: boolean; error?: string }>;
-  toggleStudentRepMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -327,10 +323,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [updateCurrentUserInfo, logout]);
 
-  const setRole = useCallback((role: string) => {
-    setCurrentRole(role);
-  }, []);
-
   const switchRole = useCallback(async (newRole: 'teacher' | 'evaluator') => {
     setCurrentRole(newRole);
     if (typeof window !== 'undefined') {
@@ -348,11 +340,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.location.href = '/evaluator/dashboard';
       }
     }
-  }, []);
-
-  const loginAsRole = useCallback((role: string) => {
-    setCurrentRole(role);
-    setLoggedIn(true);
   }, []);
 
   const loginWithGoogleToken = useCallback(
@@ -388,38 +375,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [updateCurrentUserInfo]
   );
 
-  const loginBypass = useCallback(
-    async (email: string, role?: string) => {
-      try {
-        const payload: any = { email };
-        if (role) payload.role = role;
-
-        const data = await apiClient.post('/auth/bypass/', payload, { skipAuth: true });
-
-        const feRole = mapBackendRoleToFrontend(data.user.role);
-        setJwtToken(data.tokens.access);
-        updateCurrentUserInfo(data.user);
-        setLoggedIn(true);
-        setCurrentRole(feRole);
-        setCurrentUserId(data.user.id);
-
-        apiClient.setTokens(data.tokens.access, data.tokens.refresh);
-
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('auth:login-success', { detail: { user: data.user } }));
-        }
-
-        toast.success(`Logged in successfully as ${data.user.name || email}`);
-        return { success: true, user: data.user };
-      } catch (err: any) {
-        const errMsg = err.data?.error || err.message || 'Bypass authentication failed';
-        toast.error(errMsg);
-        return { success: false, error: errMsg };
-      }
-    },
-    [updateCurrentUserInfo]
-  );
-
   const updateUserProfile = useCallback(
     async (name: string, className: string) => {
       try {
@@ -432,10 +387,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
     [updateCurrentUserInfo]
   );
-
-  const toggleStudentRepMode = useCallback(() => {
-    setIsStudentRep((prev) => !prev);
-  }, []);
 
   return (
     <AuthContext.Provider
@@ -451,14 +402,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isDqcMember,
         hasDualRole,
         availableRoles,
-        setRole,
         switchRole,
-        loginAsRole,
         loginWithGoogleToken,
-        loginBypass,
         logout,
         updateUserProfile,
-        toggleStudentRepMode,
       }}
     >
       {children}
